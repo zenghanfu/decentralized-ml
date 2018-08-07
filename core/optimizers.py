@@ -4,13 +4,19 @@ import numpy as np
 # from core.utils.keras import serialize_weights, deserialize_single_weights
 from collections import defaultdict
 import numpy as np
+from transitions import Machine
+
+class Instruction(object):
+    
 
 class Optimizer(object):
     def __init__(self, participants, hyperparams):
         self.metaDict = defaultdict(lambda: defaultdict(lambda: None))
         for participant in participants:
-            # participant should be the whoAmI() of the node
-            # call a bunch of setter functions. let's see whether this works...
+            """
+            participant should be the whoAmI() of the node
+            call a bunch of setter functions. let's see whether this works...
+            """
             self.setInstructions(participant, participants, hyperparams)
             self.setInformation(participant, participants, hyperparams)
             self.setNeighbors(participant, participants, hyperparams)
@@ -57,16 +63,34 @@ class Optimizer(object):
 
 class FederatedAveraging(Optimizer):
     def __init__(self, participants, hyperparams):
+        """
+        make sure to initialize any instance variables which will be used by 
+        the super's init method (i.e. anything called in the setter instance
+        methods)
+        """
         self.averager = np.random.choice((participants))
         super().__init__(participants, hyperparams)
     
     def setNeighbors(self, nodeID, participants, hyperparams):
-        # creates generator of instructions for this node
+        """
+        creates generator of neighbors for this node
+        for federated averaging, we want each node to know that it needs to
+        send its information to one specific node.
+        except for that one specific node, which needs to broadcast its info
+        to all the other nodes.
+        """
         def neighbor(averager):
             while True:
                 yield averager
         retval = neighbor(self.averager)
-        self.metaDict['neighbors'][nodeID] = lambda: next(retval);
+        self.metaDict['neighbors'][nodeID] = lambda: next(retval)
+
+    def setInstructions(self, nodeID, participants, hyperparams):
+        def instruct():
+            while True:
+
+        retval = instruct()
+        self.metaDict['instructions'][nodeID] = lambda: next(retval)
 
 
 def setOptimizer(optimizer):
