@@ -2,10 +2,12 @@ import logging
 import time
 import json
 from collections import deque
-from core.utils.dmljob import DMLJob
-from core.runner import DMLRunner
 from threading import Event, Timer
 from multiprocessing import Pool
+
+from core.utils.dmljob import DMLJob
+from core.runner import DMLRunner
+from core.configuration import ConfigurationManager
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -23,13 +25,13 @@ class DMLScheduler(object):
     __instance = None
 
     @staticmethod
-    def getInstance():
+    def get_instance():
         """ Static access method. """
         if DMLScheduler.__instance == None:
             DMLScheduler()
         return DMLScheduler.__instance
 
-    def __init__(self):
+    def __init__(self, config_manager):
         """ Virtually private constructor. """
         if DMLScheduler.__instance != None:
             raise Exception("This class is a singleton!")
@@ -38,15 +40,12 @@ class DMLScheduler(object):
         logging.info("Setting up scheduler...")
         self.queue = deque()
         self.processed = []
-        with open('core/config.json') as f:
-            config = json.load(f)
-            self.dataset_path = config["dataset_path"]
-            self.runner_config = config["runner_config"]
-            scheduler_config = config["scheduler_config"]
-            self.frequency_in_mins = scheduler_config["frequency_in_mins"]
-            self.num_runners = scheduler_config["num_processes"]
+        config = config_manager.get_config()
+        self.dataset_path = config.get("GENERAL", "dataset_path")
+        self.frequency_in_mins = config.getint("SCHEDULER", "frequency_in_mins")
+        self.num_runners = config.getint("SCHEDULER", "num_runners")
         self.pool = Pool(processes=self.num_runners)
-        self.runners = [self.create_runner() for _ in range(self.num_runners)]
+        self.runners = [DMLRunner(config_manager) for _ in range(self.num_runners)]
         self.current_jobs = [None]*self.num_runners
         self.results = [None]*self.num_runners
         self.event = Event()
@@ -57,10 +56,6 @@ class DMLScheduler(object):
         assert type(dml_job) is DMLJob, "Job is not of type DMLJob."
         logging.info("Scheduling job...")
         self.queue.append(dml_job)
-
-    def create_runner(self):
-        """ Creates new runner. """
-        return DMLRunner(self.dataset_path, self.runner_config)
 
     def _runners_run_next_jobs(self):
         """ Check each job to see if it has a job running. If not, have the runner run the
@@ -104,61 +99,3 @@ class DMLScheduler(object):
         logging.info("Stopping cron...")
         self.event.set()
         logging.info("Cron stopped!")
-
-
-if __name__ == '__main__':
-    # Set up model
-    from models.keras_perceptron import KerasPerceptron
-    from custom.keras import get_optimizer
-    m = KerasPerceptron(is_training=True)
-    model_architecture = m.model.to_json()
-    model_optimizer = get_optimizer(m.model)
-    model_json = {
-        "architecture": model_architecture,
-        "optimizer": model_optimizer
-    }
-    print(model_json)
-
-    # Set up hyperparams
-    from examples.labelers import mnist_labeler
-    config = {}
-    hyperparams = {
-        'averaging_type': 'data_size',
-        'batch_size': 50,
-        'epochs': 1,
-        'split': 0.8,
-    }
-
-    # Schedule some jobs
-    from core.utils.dmljob import DMLJob
-
-    scheduler = DMLScheduler.getInstance()
-
-    initialize_job = DMLJob(
-        "initialize",
-        model_json,
-        "keras"
-    )
-    initial_weights = scheduler.add_job(initialize_job)
-
-    train_job = DMLJob(
-        "train",
-        model_json,
-        "keras",
-        config,
-        initial_weights,
-        hyperparams,
-        mnist_labeler
-    )
-    new_weights, _, _ = scheduler.add_job(train_job)
-
-    validate_job = DMLJob(
-        "validate",
-        model_json,
-        'keras',
-        config,
-        new_weights,
-        hyperparams,
-        mnist_labeler
-    )
-    scheduler.add_job(validate_job)
