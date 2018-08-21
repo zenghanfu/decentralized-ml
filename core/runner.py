@@ -8,6 +8,8 @@ from data.iterators import create_train_dataset_iterator
 from data.iterators import create_test_dataset_iterator
 from core.utils.keras import train_keras_model, validate_keras_model
 from core.utils.keras import serialize_weights
+from core.configuration import ConfigurationManager
+
 
 logging.basicConfig(level=logging.DEBUG,
                     format='[Runner] %(asctime)s %(levelname)s %(message)s')
@@ -27,14 +29,15 @@ class DMLRunner(object):
 
     """
 
-    def __init__(self, dataset_path, config):
+    def __init__(self, config_manager):
         """
         Sets up the unique identifier of the DML Runner and the local dataset path.
         """
+        config = config_manager.get_config()
         self.iden = str(uuid.uuid4())[:8]
-        self.dataset_path = dataset_path
-        self.config = config
-        self.data_count = count_datapoints(dataset_path)
+        self.dataset_path = config.get("GENERAL", "dataset_path")
+        self.config = dict(config.items("RUNNER"))
+        self.data_count = count_datapoints(self.dataset_path)
         self.current_job = None
 
     def run_job(self, job):
@@ -68,6 +71,7 @@ class DMLRunner(object):
                  job.hyperparams,
                  job.labeler
             )
+
             # TODO: Send the results to the developer through P2P (maybe).
             # How are we getting this metadata (val_stats) back to the user?
             # This has been assigned to Neelesh ^
@@ -188,67 +192,3 @@ class DMLRunner(object):
             model.summary()
             initial_weights = model.get_weights()
         return initial_weights
-
-
-if __name__ == '__main__':
-    config = {}
-    runner = DMLRunner('datasets/mnist', config)
-
-    from models.keras_perceptron import KerasPerceptron
-    m = KerasPerceptron(is_training=True)
-    model_architecture = m.model.to_json()
-    model_optimizer = get_optimizer(m.model)
-    model_json = {
-        "architecture": model_architecture,
-        "optimizer": model_optimizer
-    }
-    print(model_json)
-
-    from core.utils.dmljob import DMLJob, serialize_job, deserialize_job
-    initialize_job = DMLJob(
-        "initialize",
-        model_json,
-        "keras"
-    )
-    initial_weights = runner.run_job(initialize_job)
-
-    # TEST for FED AVG.
-    # from core.utils.keras import serialize_weights
-    # from core.fed_learning import federated_averaging
-    # print(initial_weights[0], initial_weights[-1])
-    # serialized_weights = serialize_weights(initial_weights)
-    # avg_weights = federated_averaging([serialized_weights, serialized_weights])
-    # print()
-    # print(avg_weights[0], initial_weights[-1])
-    # exit(1)
-    ####
-
-    hyperparams = {
-        'averaging_type': 'data_size',
-        'batch_size': 50,
-        'epochs': 1,
-        'split': 0.8,
-    }
-
-    from examples.labelers import mnist_labeler
-    train_job = DMLJob(
-        "train",
-        model_json,
-        "keras",
-        config,
-        initial_weights,
-        hyperparams,
-        mnist_labeler
-    )
-    new_weights, omega, train_stats = runner.run_job(train_job)
-
-    validate_job = DMLJob(
-        "validate",
-        model_json,
-        'keras',
-        config,
-        new_weights,
-        hyperparams,
-        mnist_labeler
-    )
-    val_stats = runner.run_job(validate_job)
