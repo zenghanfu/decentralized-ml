@@ -16,9 +16,11 @@ CONFIG = None
 # catted = api.cat('QmVm4yB2jxPwXXVXM6n86TuwA4jCQ7EfNPjguFrhoCbPiJ')
 # print('loaded in model from IPFS as bytes')
 # model = model.load_weights(catted)
+def content_hash(data):
+    return api.add(data)
+
 def keras2ipfs(model):
     return api.add_bytes(serialize_keras_model(model))
-
 
 def ipfs2keras(model, model_addr):
     return deserialize_keras_model(model, api.cat(model_addr))
