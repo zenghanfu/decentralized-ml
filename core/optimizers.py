@@ -11,19 +11,14 @@ from core.fed_learning import federated_averaging
 class CommunicationManager(object):
 
 	def __init__(self):
-		'''
-		Do some stuff
-		'''
-		self.sessions_metadata = None
-		# Dictionary from session_id to optimizers
-		self.optimizers = None
-
-	def setup():
 		''' 
 		Method that starts the class
 		Set up initial values for class properties
 		Bind port for outgoing communications
 		'''
+		self.sessions_metadata = None
+		# Dictionary from session_id to optimizers
+		self.optimizers = None		
 
 	def inform(session_id, event, details):
 		'''
@@ -40,6 +35,8 @@ class CommunicationManager(object):
 		'''
 		Returns the state of the particular optimization session corresponding to session_id
 		'''
+		optimizer = self.optimizers.get(session_id)
+		return optimizer.state
 
 	def _send(session_id, node_id, message):
 		'''
@@ -57,11 +54,14 @@ class CommunicationManager(object):
 		which are class properties of a new session
 		This also binds the session_id to a particular port
 		'''
+		new_optimizer = Optimizer({'transitions': , 'states': , 'initial': , 'properties': })
+		self.optimizers[session_id] = new_optimizer
 
 	def _drop_session(session_id):
 		'''
 		Helper function to remove a particular session from the class properties
-		'''   
+		'''
+		del self.optimizers[session_id]
 
 class Optimizer(Machine):
 	def __init__(self, kwargs):
@@ -76,7 +76,7 @@ class Optimizer(Machine):
 		Machine.__init__(self, transitions=transitions, states=states, initial=initial)
 		self.properties = kwargs['properties']
 		#TODO: Set up DMLRunner (how does it have a ConfigManager?)
-		self.DMLRunner = new DMLRunner(ConfigurationManager)
+		self.DMLRunner = DMLRunner(ConfigurationManager)
 
 
 	def make_job_from_event(event):
