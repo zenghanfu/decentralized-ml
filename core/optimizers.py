@@ -9,6 +9,15 @@ from core.utils.dmljob import DMLJob, serialize_job, deserialize_job
 from core.fed_learning import federated_averaging
 
 class CommunicationManager(object):
+	# Here will be the instance stored.
+    __instance = None
+
+    @staticmethod
+    def get_instance():
+        """ Static access method. """
+        if CommunicationManager.__instance == None:
+            CommunicationManager()
+        return CommunicationManager.__instance
 
 	def __init__(self):
 		''' 
@@ -16,6 +25,10 @@ class CommunicationManager(object):
 		Set up initial values for class properties
 		Bind port for outgoing communications
 		'''
+		if CommunicationManager.__instance != None:
+            raise Exception("This class is a singleton!")
+        else:
+            CommunicationManager.__instance = self
 		self.sessions_metadata = None
 		# Dictionary from session_id to optimizers
 		self.optimizers = None		
