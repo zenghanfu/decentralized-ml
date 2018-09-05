@@ -7,61 +7,94 @@ import numpy as np
 from transitions import Machine
 from core.utils.dmljob import DMLJob, serialize_job, deserialize_job
 from core.fed_learning import federated_averaging
+from enum import Enum
+
+class OptimizerEventTypes(Enum):
+    TRAIN = "TRAIN"
+    VALIDATE = "VALIDATE"
+    AVERAGE = "AVERAGE"
+    INTERNAL = "INTERNAL"
+    EXTERNAL = "EXTERNAL"
+    UNDEFINED = "UNDEFINED"
+
+class CommunicationManagerEventTypes(Enum):
+    INTERNAL = "INTERNAL"
+    EXTERNAL = "EXTERNAL"
+    UNDEFINED = "UNDEFINED"
 
 class CommunicationManager(object):
-	# Here will be the instance stored.
-    __instance = None
 
-    @staticmethod
-    def get_instance():
-        """ Static access method. """
-        if CommunicationManager.__instance == None:
-            CommunicationManager()
-        return CommunicationManager.__instance
-
-	def __init__(self):
+	def __init__(self, configManager):
 		''' 
 		Method that starts the class
 		Set up initial values for class properties
 		Bind port for outgoing communications
 		'''
-		if CommunicationManager.__instance != None:
-            raise Exception("This class is a singleton!")
-        else:
-            CommunicationManager.__instance = self
+		self.configManager = configManager
 		self.sessions_metadata = None
 		# Dictionary from session_id to optimizers
-		self.optimizers = None		
+		self.optimizers = None	
 
-	def inform(session_id, event, details):
+	EVENT_TYPE_CALLBACKS = {
+		    EventTypes.INTERNAL.value: schedule_job, 
+		    EventTypes.EXTERNAL.value: communicate_p2p,
+		    EventTypes.UNDEFINED.value: do_nothing,
+		}
+
+	def parse(self, event):
+	    """
+	    Parses an event dictionary into a callback.
+	    If the callback is not defined, it does nothing.
+	    """
+	    event_type = event.get('OptimizerEventType', EventTypes.UNDEFINED.value)
+	    callback = EVENT_TYPE_CALLBACKS[EventTypes.UNDEFINED.value]
+	    if event_type in EVENT_TYPE_CALLBACKS:
+	        callback = EVENT_TYPE_CALLBACKS[event_type]
+	    # ASYNCHRONOUS callback
+	    callback(event)
+
+    def communicate_p2p(self, event):
+    	# TODO
+    	pass 
+
+	def configure(self, scheduler):
+		self.scheduler = scheduler
+
+	def inform(self, session_id, payload):
 		'''
 		Method called by other modules to inform the Communication Manager about:
 		- an event (string) that occurred in the Unix service corresponding the session specified by session_id
-		- any optional details (dictionary) about this event
 		Event will likely trigger or contribute to the trigger of a transition on the Optimizer, unless
 		the transition is invalid for the given Optimizer
 		Ex: Runner informs the Communication Manager that a node is done training and it needs to comm. the
 		new weights to the network
 		'''
+		optimizer = self.optimizers[session_id]
+		# CommunicationManager tells the Optimizer what to do, and does stuff based on the return behavior (if any)
+		# SYNCHRONOUS callback
+		optimizer_callback = optimizer.tell(payload)
+		# ASYNCHRONOUS callback
+		self.parse(optimizer_callback)
 
-	def get_state(session_id):
+
+	def get_state(self, session_id):
 		'''
 		Returns the state of the particular optimization session corresponding to session_id
 		'''
 		optimizer = self.optimizers.get(session_id)
 		return optimizer.state
 
-	def _send(session_id, node_id, message):
+	def _send(self, session_id, node_id, message):
 		'''
 		Send a message to a node within the particular optimization session corresponding to session_id
 		'''
 
-	def _send_to_all(session_id, message):
+	def _send_to_all(self, session_id, message):
 		'''
 		Send a message to all nodes within the particular optimization session corresponding to session_id
 		'''
 
-	def _create_session(session_id, optimization_networks, active_optimizer):
+	def _create_session(self, session_id, optimization_networks, active_optimizer):
 		'''
 		Helper function to populate the optimization_network, state_machine, and active_optimizers
 		which are class properties of a new session
@@ -69,40 +102,58 @@ class CommunicationManager(object):
 		'''
 		new_optimizer = Optimizer({'transitions': , 'states': , 'initial': , 'properties': })
 		self.optimizers[session_id] = new_optimizer
+		new_optimizer.configure(self)
 
-	def _drop_session(session_id):
+	def _drop_session(self, session_id):
 		'''
 		Helper function to remove a particular session from the class properties
 		'''
 		del self.optimizers[session_id]
+
+	def schedule_job(self, event):
+		'''
+		Helper function to help the Comm. Mgr. schedule a DMLJob from what it received from the Optimizer
+		'''
+		job = self.make_job_from_event(event)
+		self.scheduler.add_job(job)
+
+	def make_job_from_event(self, event):
+		'''
+		Helper function to help the Comm. Mgr. make a DMLJob from what it received from the Optimizer
+		'''
+		return deserialize_job(event)
 
 class Optimizer(Machine):
 	def __init__(self, kwargs):
 		'''
 		Kwargs is a dictionary containing all the info needed to initialize the Optimizer.
 		This includes any number of properties such as thresholds, etc.
-		This init method also should set up the DMLRunner for this Optimizer.
 		'''
 		transitions = kwargs['transitions']
 		states = kwargs['states']
 		initial = kwargs['initial']
 		Machine.__init__(self, transitions=transitions, states=states, initial=initial)
 		self.properties = kwargs['properties']
-		#TODO: Set up DMLRunner (how does it have a ConfigManager?)
-		self.DMLRunner = DMLRunner(ConfigurationManager)
 
-
-	def make_job_from_event(event):
-		return deserialize_job(event)
+	def do_nothing(self, event):
+	    print("NOTHING")
 
 	def do_training(self, event):
 		'''
-		Event data should be a callback of what to train, but this defaults to training
-		the model this Optimizer currently knows
+		Event data should be the model to train on.
 		'''
-		#TODO: Call the train method of the DMLRunner
-		job = self.make_job_from_event(event)
-		job_results = self.DMLRunner.run_job(job)
+		event['OptimizerEventType'] = "TRAIN"
+		return event
+		# job = self.make_job_from_event(event)
+		# # TODO: Get the result of the job back to this Optimizer so that it knows what to do
+		# self.scheduler.add_job(job)
+
+	def do_validating(self, event):
+		'''
+		Event data should be the model to validate on.
+		'''
+		event['OptimizerEventType'] = "VALIDATE"
+		return event
 
 	def do_averaging(self, event):
 		'''
@@ -112,13 +163,49 @@ class Optimizer(Machine):
 		and then averaging is done simply
 		'''
 		# Get the weights
-		old_weights = event['weights']
-		# Make a validation job with the weights
-		job = self.make_job_from_event(event)
-		# Do a validation run with the validation job
-		job_results = self.DMLRunner.run_job(job)
-		# Take the output of the validation run and average these weights
-        federated_averaging(job_results)
+		event['OptimizerEventType'] = "AVERAGE"
+		return event
+		# old_weights = event['weights']
+		# # Make a validation job with the weights
+		# # Do a validation run with the validation job
+		# # TODO: Get the results of the job back to this Optimizer
+		# self.do_validating(event)
+		# # Take the output of the validation run and average these weights
+  #       federated_averaging(job_results)
+
+	EVENT_TYPE_CALLBACKS = {
+	    EventTypes.TRAIN.value: do_training, 
+	    EventTypes.VALIDATE.value: do_validating,
+	    EventTypes.AVERAGE.value: do_averaging,
+	    EventTypes.UNDEFINED.value: do_nothing,
+	}
+	def tell(self, event):
+		return parse(event)
+
+	def parse(self, event):
+	    """
+	    Parses an event dictionary into a callback.
+	    If the callback is not defined, it does nothing.
+	    """
+	    event_type = event.get('EventType', EventTypes.UNDEFINED.value)
+	    callback = EVENT_TYPE_CALLBACKS[EventTypes.UNDEFINED.value]
+	    if event_type in EVENT_TYPE_CALLBACKS:
+	        callback = EVENT_TYPE_CALLBACKS[event_type]
+	    return callback(event)
+
+	def configure(self, communicationManager):
+		# TODO: Determine whether this method is strictly necessary?
+		self.communicationManager = communicationManager 
+
+	def schedule_job(self, job):
+		'''
+		Helper function to schedule a DMLJob via depdendency injection
+		'''
+		self.scheduler.add_job(job)
+		# TODO: Get the result of the job back to the Comm. Mgr. 
+
+	def make_job_from_event(self, event):
+		return deserialize_job(event)
         
     def get_model_with_addr(self, model_addr):
     	'''
