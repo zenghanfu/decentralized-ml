@@ -1,6 +1,7 @@
 import logging
 import random
 import uuid
+import time
 
 from custom.keras import model_from_serialized, get_optimizer
 from data.iterators import count_datapoints
@@ -13,6 +14,7 @@ from core.configuration import ConfigurationManager
 
 logging.basicConfig(level=logging.DEBUG,
                     format='[Runner] %(asctime)s %(levelname)s %(message)s')
+
 
 class DMLRunner(object):
     """
@@ -38,7 +40,6 @@ class DMLRunner(object):
         self.dataset_path = config.get("GENERAL", "dataset_path")
         self.config = dict(config.items("RUNNER"))
         self.data_count = count_datapoints(self.dataset_path)
-        self.current_job = None
 
     def run_job(self, job):
         """
@@ -48,55 +49,64 @@ class DMLRunner(object):
         """
         assert job.job_type in ['train', 'validate', 'initialize'], \
             'DMLJob type ({0}) is not valid'.format(job.job_type)
-        if self.is_active(): return
         logging.info("Running job (type: {0})...".format(job.job_type))
-        self.current_job = job
-        if job.job_type == 'train':
-            new_weights, omega, train_stats = self._train(
-                job.serialized_model,
-                job.model_type,
-                job.weights,
-                job.hyperparams,
-                job.labeler
-            )
-            # TODO: Send the (new_weights_in_bytes, omega) to the aggregator
-            # through P2P.
-            print(train_stats)
-            return_obj = new_weights, omega, train_stats
-        elif job.job_type == 'validate':
-            val_stats = self._validate(
-                 job.serialized_model,
-                 job.model_type,
-                 job.weights,
-                 job.hyperparams,
-                 job.labeler
-            )
+        try:
+            if job.job_type == 'train':
+                    new_weights, omega, train_stats = self._train(
+                        job.serialized_model,
+                        job.model_type,
+                        job.weights,
+                        job.hyperparams,
+                        job.labeler
+                    )
+                    # TODO: Send the (new_weights_in_bytes, omega) to the aggregator
+                    # through P2P.
+                    print(train_stats)
+                    results = {
+                        "return_obj": (new_weights, omega, train_stats),
+                        "successful": True
+                    }
+            elif job.job_type == 'validate':
+                val_stats = self._validate(
+                     job.serialized_model,
+                     job.model_type,
+                     job.weights,
+                     job.hyperparams,
+                     job.labeler
+                )
 
-            # TODO: Send the results to the developer through P2P (maybe).
-            # How are we getting this metadata (val_stats) back to the user?
-            # This has been assigned to Neelesh ^
-            print(val_stats)
-            return_obj = val_stats
-        elif job.job_type == 'initialize':
-            # NOTE: This shouldn't be used in BETA/PROD right now, only DEV!!!
-            initial_weights = self._initialize_model(
-                job.serialized_model,
-                job.model_type
-            )
-            weights_in_bytes = serialize_weights(initial_weights)
-            # TODO: Send (weights_in_bytes) to all nodes/aggregator/developer
-            # through P2P.
-            #print(initial_weights)
-            return_obj = initial_weights
+                # TODO: Send the results to the developer through P2P (maybe).
+                # How are we getting this metadata (val_stats) back to the user?
+                # This has been assigned to Neelesh ^
+                print(val_stats)
+                return_obj = val_stats
+                results = {
+                    "return_obj": val_stats,
+                    "successful": True
+                }
+            elif job.job_type == 'initialize':
+                # NOTE: This shouldn't be used in BETA/PROD right now, only DEV!!!
+                initial_weights = self._initialize_model(
+                    job.serialized_model,
+                    job.model_type
+                )
+                weights_in_bytes = serialize_weights(initial_weights)
+                # TODO: Send (weights_in_bytes) to all nodes/aggregator/developer
+                # through P2P.
+                #print(initial_weights)
+                results = {
+                    "return_obj": initial_weights,
+                    "successful": True
+                }
+        except Exception as e:
+            results = {
+                "successful": False,
+                "error_message": e
+            }
+            print(e)
         self.current_job = None
         logging.info("Finished running job!")
-        return return_obj # Returning is only for debugging purposes.
-
-    def is_active(self):
-        """
-        Returns whether the runner is running a job.
-        """
-        return self.current_job != None
+        return results # Returning is only for debugging purposes.
 
     def _train(self, serialized_model, model_type, initial_weights, hyperparams,
         labeler):

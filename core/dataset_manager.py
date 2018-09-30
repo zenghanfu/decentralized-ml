@@ -4,9 +4,11 @@ import datetime
 import string
 import random
 import os
-import tests.context
+
 import numpy as np
 import pandas as pd
+
+import core.utils.context
 from core.configuration import ConfigurationManager
 
 
@@ -77,8 +79,10 @@ class DatasetManager():
             dataset2.csv
             md_dataset2.csv
         transformed/
-            06/10/16sgf.csv
-            06/10/16mlf.csv
+            dataset1/
+                06/10/16sgf.csv
+            dataset2/
+                06/10/16mlf.csv
 
     """
 
@@ -118,12 +122,17 @@ class DatasetManager():
         #'transformed'. Names in this folder are generated using a timestamp
         #joined with some random characters.
         for name,data in raw_data.items():
+            new_folder = os.path.join(self.tfp, name)
+            if not os.path.exists(new_folder):
+                os.makedirs(new_folder)
             transformed_data = transform_function(data)
             timestamp = str(datetime.datetime.now())
             r_string = random_string(5)
             new_name = timestamp + r_string
-            transformed_data.to_csv(os.path.join(self.tfp, new_name + '.csv'),
-                                    index=False)
+            transformed_data.to_csv(
+                os.path.join(new_folder, new_name + '.csv'),
+                index=False
+            )
 
         assert os.path.isdir(os.path.join(self.rfp, 'transformed'))
 
@@ -147,7 +156,7 @@ class DatasetManager():
                 if file[:2] != 'md':
                     file_path = os.path.join(folder_path, file)
                     dataset = pd.read_csv(file_path)
-                    raw_dict[file] = dataset
+                    raw_dict[file[:-4]] = dataset
         return raw_dict
 
     def get_transformed_data(self):
@@ -163,10 +172,12 @@ class DatasetManager():
 
         if self.tfp:
             transform_dict = {}
-            for file in os.listdir(self.tfp):
-                if file[-4:] == '.csv':
-                    data = pd.read_csv(os.path.join(self.tfp, file))
-                    transform_dict[file] = data
+            for folder in os.listdir(self.tfp):
+                folder_path = os.path.join(self.tfp, folder)
+                for file in os.listdir(folder_path):
+                    if file[-4:] == '.csv':
+                        data = pd.read_csv(os.path.join(folder_path, file))
+                        transform_dict[file] = data
             return transform_dict
         else:
             raise TransformedNotFoundError()
