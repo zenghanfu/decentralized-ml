@@ -7,20 +7,7 @@ import numpy as np
 from transitions import Machine
 from core.utils.dmljob import DMLJob, serialize_job, deserialize_job
 from core.fed_learning import federated_averaging
-from enum import Enum
-
-class OptimizerEventTypes(Enum):
-    TRAIN = "TRAIN"
-    VALIDATE = "VALIDATE"
-    AVERAGE = "AVERAGE"
-    INTERNAL = "INTERNAL"
-    EXTERNAL = "EXTERNAL"
-    UNDEFINED = "UNDEFINED"
-
-class CommunicationManagerEventTypes(Enum):
-    INTERNAL = "INTERNAL"
-    EXTERNAL = "EXTERNAL"
-    UNDEFINED = "UNDEFINED"
+from core.EventTypes import OptimizerEventTypes, CommMgrEventTypes
 
 class Optimizer(Machine):
 	def __init__(self, kwargs):
@@ -92,13 +79,13 @@ class Optimizer(Machine):
 	        callback = EVENT_TYPE_CALLBACKS[event_type]
 	    return callback(event)
 
-	def configure(self, communicationManager):
+	def configure(self, CommMgr):
 		# TODO: Determine whether this method is strictly necessary?
-		self.communicationManager = communicationManager 
+		self.CommMgr = CommMgr 
 
 	def schedule_job(self, job):
 		'''
-		Helper function to schedule a DMLJob via depdendency injection
+		Helper function to schedule a DMLJob via dependency injection
 		'''
 		self.scheduler.add_job(job)
 		# TODO: Get the result of the job back to the Comm. Mgr. 
