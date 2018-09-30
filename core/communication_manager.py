@@ -1,5 +1,5 @@
 import logging
-from enum import Enum
+from core.EventTypes import CommMgrEventTypes, OptimizerEventTypes
 
 # TODO: Need to import 'FederatedAveragingOptimizer' (@panda).
 
@@ -7,10 +7,6 @@ from enum import Enum
 logging.basicConfig(level=logging.DEBUG,
     format='[CommunicationManager] %(asctime)s %(levelname)s %(message)s')
 
-class EventTypes(Enum):
-    SCHEDULE = "SCHEDULE"
-    TERMINATE = "TERMINATE"
-    NOTHING = "NOTHING"
 
 class CommunicationManager(object):
     """
@@ -89,10 +85,10 @@ class CommunicationManager(object):
         everything from there on.
         """
         event_type = actionable_event.get(
-            'optimizer_event_type',
-            EventTypes.NOTHING.value
+            'optimizer_state',
+            CommMgrEventTypes.NOTHING.value
         )
-        callback = EVENT_TYPE_CALLBACKS[EventTypes.NOTHING.value]
+        callback = EVENT_TYPE_CALLBACKS[CommMgrEventTypes.NOTHING.value]
         if event_type in EVENT_TYPE_CALLBACKS:
             callback = EVENT_TYPE_CALLBACKS[event_type]
         payload = actionable_event.get('payload', None)
@@ -121,7 +117,10 @@ class CommunicationManager(object):
         self.optimizer = None
 
     EVENT_TYPE_CALLBACKS = {
-        EventTypes.SCHEDULE.value: _schedule_job,
-        EventTypes.TERMINATE.value: _terminate_session,
-        EventTypes.NOTHING.value: lambda *args: None,
+        OptimizerEventTypes.TRAIN.value: _schedule_job,
+        OptimizerEventTypes.COMM.value: _schedule_job,
+		OptimizerEventTypes.AVERAGE.value: _schedule_job,
+        OptimizerEventTypes.SPLIT.value: _schedule_job,
+		OptimizerEventTypes.TERMINATE.value: _terminate_session,
+        OptimizerEventTypes.NOTHING.value: lambda *args: None
     }
