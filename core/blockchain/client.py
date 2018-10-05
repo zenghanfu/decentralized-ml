@@ -1,5 +1,6 @@
 import base58
 import json
+import logging
 import os
 
 import ipfsapi
@@ -8,7 +9,7 @@ from core.configuration import ConfigurationManager
 
 
 logging.basicConfig(level=logging.DEBUG,
-    format='[Runner] %(asctime)s %(levelname)s %(message)s')
+    format='[Blockchain Client] %(message)s')
 
 
 class Client(object):
