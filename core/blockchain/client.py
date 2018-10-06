@@ -33,37 +33,54 @@ class Client(object):
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
 
-    def setter(self, key, value):
-        
+    def setter(self, key: str, value: object) -> str:
+        '''
+        Provided a key and a JSON/np.array object, upload the object to
+        IPFS and then store the hash as the value on the blockchain
+        TODO: blockchain setter API required
+        '''
+        on_chain_addr = _upload(value)
+        # TODO: add error checking to async call
+        tx_receipt = "some http call with key and value=on_chain_addr"
         return tx_receipt
 
-    def getter(self, key):
-    
-        return bytes322json(addr)
+    def getter(self, key: str) -> object:
+        '''
+        Provided a key, get the IPFS hash from the blockchain and download
+        the object from IPFS
+        TODO: blockchain getter API required
+        '''
+        # TODO: add error checking to async call
+        on_chain_addr = "some http call with key"
+        retval = _download(on_chain_addr)
+        return retval
 
     def _upload_local(self, key: str, obj: object):
-        '''Test method, DO NOT USE
+        '''
+        Test method, DO NOT USE
         '''
         addr = self.client.add(obj)
         self.kv[key] = addr
 
     def _download_local(self, key: str) -> object:
-        '''Test method, DO NOT USE
+        '''
+        Test method, DO NOT USE
         '''
         addr = self.kv[key]
         return self.client.get(addr)
 
     def _upload(self, obj: object) -> str:
-        '''Provided any Python object, store it on IPFS and then upload
+        '''
+        Provided any Python object, store it on IPFS and then upload
         the hash to the blockchain
-        TODO: blockchain setter API required
         '''
         ipfs_hash = self._content_to_ipfs(obj)
         byte_addr = self._ipfs_to_blockchain(ipfs_hash)
         return addr
 
     def _download(self, byte_addr: bytes) -> object:
-        '''Provided an on-chain content address, retrieve the Python
+        '''
+        Provided an on-chain content address, retrieve the Python
         object from IPFS
         TODO: blockchain getter API required
         '''
@@ -72,32 +89,38 @@ class Client(object):
         return content
 
     def _ipfs_to_content(self, ipfs_hash: str) -> object:
-        '''Helper function to retrieve a Python object from an IPFS hash
+        '''
+        Helper function to retrieve a Python object from an IPFS hash
         '''
         return self.client.get(addr)
 
     def _content_to_ipfs(self, obj: object) -> str:
-        '''Helper function to deploy a Python object onto IPFS, 
+        '''
+        Helper function to deploy a Python object onto IPFS, 
         returns an IPFS hash
         '''
         return self.client.add(obj)
 
     def _ipfs_to_blockchain(self, ipfs_hash: str) -> bytes:
-        '''Helper function to convert IPFS hashes to on-chain content addresses
+        '''
+        Helper function to convert IPFS hashes to on-chain content addresses
         '''
         return base58.b58encode(b'\x12 ' + ipfs_hash)
 
     def _blockchain_to_ipfs(self, byte_addr: bytes) -> str:
-        '''Helper function to convert on-chain content addresses to IPFS hashes
+        '''
+        Helper function to convert on-chain content addresses to IPFS hashes
         '''
         return base58.b58decode(byte_addr)[2:]
 
     def _cast_str(self, input: str):
-        '''Helper function to cast string inputs to desired type
+        '''
+        Helper function to cast string inputs to desired type
         '''
         pass
 
     def _cast_dict(self, input: dict):
-        '''Helper function to cast dict inputs to desired type
+        '''
+        Helper function to cast dict inputs to desired type
         '''
         pass
