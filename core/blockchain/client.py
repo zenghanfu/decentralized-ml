@@ -6,6 +6,8 @@ import os
 import ipfsapi
 
 from core.configuration import ConfigurationManager
+from core.utils.keras import serialize_weights, deserialize_weights
+from custom.keras import model_from_serialized, get_optimizer
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -13,19 +15,26 @@ logging.basicConfig(level=logging.DEBUG,
 
 
 class Client(object):
-    #TODO: enum-like casting for multiple datatypes, if needed
+    '''
+    The blockchain client exposes `setter` and `getter` in order to interact
+    with the blockchain.
+    '''
+    # TODO: enum-like casting for multiple datatypes, if needed
     # OBJ_TYPES = {str: IPFS._cast_str, dict: IPFS._cast_dict}
 
     with open("./core/blockchain/blockchain_config.json", "r") as read_file:
         CONFIG = json.load(read_file)
 
-    def __init__(self, config_manager):
+    def __init__(self, config_manager, model_id):
         '''
         TODO: Decide if `kv` is needed
         TODO: Refactor dependencies
         '''
         config = config_manager.get_config()
+        self.model_id = model_id
         self.kv = {}
+        self.client_id = config.get("BLOCKCHAIN", "client_id")
+        self.checksum = "lgtm"
         self.client = None
         try:
             self.client = ipfsapi.connect(config.get("BLOCKCHAIN", "host"),
@@ -33,15 +42,21 @@ class Client(object):
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
 
+    ##########################################################################
+    ###                            API SECTION                             ###
+    ##########################################################################
+
     def setter(self, key: str, value: object) -> str:
         '''
         Provided a key and a JSON/np.array object, upload the object to
         IPFS and then store the hash as the value on the blockchain
         TODO: blockchain setter API required
         '''
-        on_chain_addr = _upload(value)
+        on_chain_addr = self._upload(value)
         # TODO: add error checking to async call
+        # try:
         tx_receipt = "some http call with key and value=on_chain_addr"
+        # except:
         return tx_receipt
 
     def getter(self, key: str) -> object:
@@ -52,10 +67,10 @@ class Client(object):
         '''
         # TODO: add error checking to async call
         on_chain_addr = "some http call with key"
-        retval = _download(on_chain_addr)
+        retval = self._download(on_chain_addr)
         return retval
 
-    def _upload_local(self, key: str, obj: object):
+    def _upload_local(self, key: str, obj: object) -> None:
         '''
         Test method, DO NOT USE
         '''
@@ -124,3 +139,55 @@ class Client(object):
         Helper function to cast dict inputs to desired type
         '''
         pass
+
+    ##########################################################################
+    ###                         DEVELOPER SECTION                          ###
+    ##########################################################################
+
+    def broadcast_decentralized_learning(self, model: object, weights: object,
+                                            ED: object)-> str:
+        '''
+        Upload a model config and weights to the blockchain
+        '''
+        key = self.construct_header()
+        tx_receipt = self.setter(key, model, weights)
+        return tx_receipt
+
+    def construct_header(self, model: object, weights: object) -> str:
+        # TODO: lol
+        weights_hash = ""
+        model_hash = ""
+        header = {
+            "originator": self.client_id,
+            "integrity_check": self.checksum,
+            "model_id": self.model_id,
+            "contributors": [],
+            "current_weights": weights_hash,
+            "initial_model": model_hash
+        }
+        retval = str(header)
+        return retval
+
+    def update_weights(self, model) -> str:
+        '''
+        Given a model, extract the weights and reupload them to the blockchain
+        '''
+        pass
+        # return tx_receipt
+
+    def broadcast_terminate(self) -> None:
+        '''
+        Terminates decentralized training
+        '''
+        pass
+
+    def handle_decentralized_learning(self) -> None:
+        '''
+        Return weights after training terminates
+        '''
+        pass
+
+    ##########################################################################
+    ###                         LISTERNER SECTION                          ###
+    ##########################################################################
+
