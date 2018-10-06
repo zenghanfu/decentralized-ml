@@ -1,34 +1,17 @@
-"""DEPRECATED. Needs to be rewritten after off-chain is designed."""
-
-from blockchain.blockchain_utils import *
-from blockchain.ipfs_utils import *
-
 from custom.keras import model_from_serialized, get_optimizer
 from core.utils.keras import serialize_weights, deserialize_weights
 
+
 class DMLDeveloper(object):
-    """
-    This class creates StateMachine smart contracts to train models.
-    """
-    def __init__(self, clientAddress=None):
+    '''
+    This class creates `StateMachine` smart contracts to train models.
+    '''
+    def __init__(self):
         '''
         By default, this will listen and transact through our own testnet account.
         However, if a clientAddress is specified, this developer will work through that.
         '''
-        if clientAddress:
-            self.web3 = Web3(IPCProvider())
-            assert self.web3.isConnected()
-            assert is_address(clientAddress)
-            self.clientAddress = self.web3.toChecksumAddress(clientAddress)
-        else:
-            self.web3 = Web3(HTTPProvider(BETA_URL))
-            assert self.web3.isConnected()
-            self.clientAddress = self.web3.toChecksumAddress(BETA_ADDR)
-
-        # Start reading in the contracts
-        self.delegator = self.web3.eth.contract(
-            address = self.web3.toChecksumAddress(TEMP_DELEGATOR_ADDR),
-            abi = TEMP_DELEGATOR_ABI)
+        
 
     def deploy_with_model(self, model, [addrs]=self.clientAddress):
         '''
@@ -118,19 +101,3 @@ class DMLDeveloper(object):
         addr = attr_dict[0]['args']['addr']
         print(addr)
         assert weightAddrsBytes == addr
-
-    def checkBalance(self):
-        '''
-        Internal method to test the balance of the account.
-        '''
-        myBalance = self.web3.eth.getBalance(self.clientAddress)
-        print(myBalance)
-        return myBalance
-
-if __name__ == '__main__':
-    from models.keras_lstm import KerasLSTM
-    model = KerasLSTM(is_training=True).model
-    developer = DMLDeveloper()
-    developer.checkBalance()
-    developer.deploy_with_model(model)
-    developer.update_weights(model)

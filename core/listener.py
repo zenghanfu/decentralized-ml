@@ -1,11 +1,6 @@
-"""DEPRECATED. Needs to be rewritten after off-chain is designed."""
-
-from core.blockchain.blockchain_utils import *
-from core.blockchain.ipfs_utils import *
-
-from web3.auto import w3
 import core.scheduler as scheduler
 from core.utils.dmljob import DMLJob, deserialize_job
+
 
 class DMLListener(object):
     """
