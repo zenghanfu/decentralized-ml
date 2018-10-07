@@ -58,7 +58,6 @@ class Client(object):
             self.handler(new_state[i])
             self.state.append(new_state[i])
 
-
     ##########################################################################
     ###                            API SECTION                             ###
     ##########################################################################
@@ -151,6 +150,14 @@ class Client(object):
     ##########################################################################
     ###                         DEVELOPER SECTION                          ###
     ##########################################################################
+
+class Developer(BlockchainClient):
+    '''
+    The developer is able to initiate and terminate training on the blockchain.
+    '''
+
+    def __init__(self, config_manager):
+        super().__init__(config_manager)
 
     def broadcast_decentralized_learning(self, model_config: object)-> str:
         '''
