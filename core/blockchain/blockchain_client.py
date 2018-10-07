@@ -23,25 +23,41 @@ class Client(object):
     # TODO: enum-like casting for multiple datatypes, if needed
     # OBJ_TYPES = {str: Client._cast_str, dict: Client._cast_dict}
 
-    with open("./core/blockchain/blockchain_config.json", "r") as read_file:
-        CONFIG = json.load(read_file)
+    # TODO: deal with config
+    # with open("./core/blockchain/blockchain_config.json", "r") as read_file:
+    #     CONFIG = json.load(read_file)
 
     def __init__(self, config_manager):
         '''
-        TODO: Decide if `kv` is needed
-        TODO: Decide if one client instantiated per model or not
         TODO: Refactor dependencies
         '''
         config = config_manager.get_config()
-        self.kv = {}
-        self.client_id = config.get("BLOCKCHAIN", "client_id")
-        self.checksum = "lgtm"
+        self.state = {}
+        self.host = config.get("BLOCKCHAIN", "host")
+        self.port = config.get("BLOCKCHAIN", "port")
         self.client = None
         try:
-            self.client = ipfsapi.connect(config.get("BLOCKCHAIN", "host"),
-                                            config.get("BLOCKCHAIN", "port"))
+            self.client = ipfsapi.connect(self.host, self.port)
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
+
+    def handler(self):
+        '''
+        Called on new transactions
+        '''
+        pass
+
+    def update_state(self, new_state: [dict]) -> None:
+        '''
+        Given the freshly-downloaded state, call a handler on each transaction
+        that was not already present in our own state
+        '''
+        len_new_state = len(new_state)
+        len_state = len(self.state)
+        for i in range(len_new_state - len_state, len_new_state):
+            self.handler(new_state[i])
+            self.state.append(new_state[i])
+
 
     ##########################################################################
     ###                            API SECTION                             ###
@@ -60,32 +76,21 @@ class Client(object):
             tx_receipt.raise_for_status()
         except Exception as e:
             logging.info("HTTP Request error, got: {0}".format(e))
-        return tx_receipt
+        return tx_receipt.text
 
     def getter(self, key: str) -> object:
         '''
         Provided a key, get the IPFS hash from the blockchain and download
         the object from IPFS
-        TODO: blockchain getter API required
         '''
-        # TODO: add error checking to async call
-        on_chain_addr = "some http call with key"
+        try:
+            tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
+            tx_receipt.raise_for_status()
+        except Exception as e:
+            logging.info("HTTP Request error, got: {0}".format(e))
+        self.state = tx_receipt.json()
         retval = self._download(on_chain_addr)
         return retval
-
-    def _upload_local(self, key: str, obj: object) -> None:
-        '''
-        Test method, DO NOT USE
-        '''
-        addr = self.client.add(obj)
-        self.kv[key] = addr
-
-    def _download_local(self, key: str) -> object:
-        '''
-        Test method, DO NOT USE
-        '''
-        addr = self.kv[key]
-        return self.client.get(addr)
 
     def _upload(self, obj: object) -> str:
         '''
@@ -182,68 +187,77 @@ class Client(object):
     ##########################################################################
 
 class Listener(BlockchainClient):
-    from core.EventTypes import ListenerEventTypes    
+    from core.EventTypes import ListenerEventTypes
+
     def __init__(self, config_manager, comm_mgr):
         super().__init__(config_manager)
         self.comm_mgr = comm_mgr
         self.comm_mgr.configure_listener(self)
+
     def handle_decentralized_learning(self, key: str, value: str):
-        """
+        '''
         Downloads parameters of decentralized_learning() query and 
         saves them appropriately to in-memory datastore
         This callback will be triggered by the Listener if it finds the 
         method signature it's looking for.
         The parameters (model weights, model config) will be downloaded 
         and put into the optimizer initially. So the optimizer knows this info.
-        """
+        '''
         args = self.getter(key, value)
         self.comm_mgr.inform("new_session", args)
+
     def handle_new_weights(self, key: str, value: str):
-        """
+        '''
         handle_new_weights() method downloads weights and does smth with it
         This callback is triggered by the Listener when it sees new weights 
         intended for its node ID. Downloads the weights, and gives them to the
         comm. mgr which gives them to the relevant optimizer 
         -which should do the moving average.
-        """
+        '''
         weights = self.getter(key, value)
         #TODO: Put into in-memory datastore.
         self.comm_mgr.inform("new_weights", weights)
+
     def handle_terminate(self):
         self.comm_mgr.inform("TERMINATE", None)
+
     def listen_decentralized_learning(self):
-        """
+        '''
         Polls blockchain for node ID in decentralized_learning() method signature
         decentralized_learning(...<node_ids>...) method signature will be the key 
         on the blockchain; listener should look for this, and if the method signature 
         contains its node id, it will trigger a callback
-        """
+        '''
         pass
+
     def broadcast_new_weights(self, payload: dict):
-        """
+        '''
         broadcast_new_weights() method with all relevant parameters
         should populate the key of new_weights with all of the nodes for which 
         these new weights are relevant. value should be IPFS hash.
-        """
+        '''
         key = payload.get("key", None)
         weights = payload.get("weights", None)
         self.setter(key, weights)
+
     def listen_new_weights(self):
-        """
+        '''
         Polls blockchain for node ID in new_weights() method signature
         new_weights(...<node_ids>...) method signature will be the key on the blockchain; 
         listener should look for this, and if the method signature contains its node id, 
         it will trigger a callback
-        """
+        '''
         pass
+
     def listen_terminate(self):
         pass
     CALLBACKS = {
         ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
         ListenerEventTypes.UNDEFINED.name: do_nothing,
     }
+
     def inform(self, event_type, payload):
-        """
+        '''
         Method called by other modules to inform the Listener about
         events that are going on in the service.
         These payloads are relayed to the blockchain (right now the only
@@ -254,16 +268,17 @@ class Listener(BlockchainClient):
         decide it's time to communicate the new weights to the network.
         If the Optimizer says yes, then the Communication Manager should
         relay this info to the Listener, and the Listener uploads weights.
-        """
+        '''
         self._parse_and_run_callback(event_type, payload)
+
     def _parse_and_run_callback(self, event_type, payload):
-        """
+        '''
         Parses an actionable_event and runs the
         corresponding "callback" based on the event type, which could be to do
         nothing.
         The way this method parses an event is by stripping out the event type
         and sending the raw payload to the callback function, which will handle
         everything from there on.
-        """
+        '''
         callback = EVENT_TYPE_CALLBACKS.get(event_type, ListenerEventTypes.UNDEFINED.value)
         callback(payload)
