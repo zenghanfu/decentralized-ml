@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import requests
+import asyncio
 
 import ipfsapi
 
@@ -31,15 +32,102 @@ class Client(object):
         '''
         TODO: Refactor dependencies
         '''
+<<<<<<< HEAD
         config = config_manager.get_config()
         self.state = {}
         self.host = config.get("BLOCKCHAIN", "host")
         self.port = config.get("BLOCKCHAIN", "port")
+=======
+        self.config = config_manager.get_config()
+        self.kv = {}
+        self.client_id = config.get("BLOCKCHAIN", "client_id")
+        self.checksum = "lgtm"
+>>>>>>> cd8cc7bb6c0b0d4809f35ac4a61edef07be0e80d
         self.client = None
+        self.state = [{}]
         try:
+<<<<<<< HEAD
             self.client = ipfsapi.connect(self.host, self.port)
+=======
+            self.client = ipfsapi.connect(self.config.get("BLOCKCHAIN", "host"),
+                                            self.config.get("BLOCKCHAIN", "port"))
+>>>>>>> cd8cc7bb6c0b0d4809f35ac4a61edef07be0e80d
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
+    
+    async def start_listening(self, event_filter, handler, poll_interval=5):
+        while True:
+            filtered_diffs = self.get_state_diffs(event_filter, handler)
+            if filtered_diffs:
+                return filtered_diffs
+            await asyncio.sleep(poll_interval)
+
+    def filter_set(self, event_filter, handler):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(self.start_listening(
+                event_filter, handler
+            ))
+            # inter = loop.run_until_complete(
+                # self.start_listening(event_filter, handler))
+            # check = handler(inter)
+        finally:
+            loop.close()
+        return check
+
+    def get_state_diffs(self, event_filter, handler):
+        """
+        Gets state, then finds diffs, then sets state of blockchain.
+        """
+        new_state = self.get_state()
+        state_diffs = self.get_diffs(self.state, new_state)
+        filtered_diffs = [handler(txn) if event_filter(txn) for txn in state_diffs]
+        return filtered_diffs
+
+    def get_state(self):
+        """
+        Read state of blockchain
+        """
+        newState = requests.get("http://localhost:{0}/state".format(self.config.port))
+        return newState
+        # diffs = self.get_diffs(self.state, newState)
+        # self.state = newState
+        # return diffs
+
+    def get_diffs(self, oldState: str, newState: str) -> str:
+        """
+        Iterate through oldState and newState to see any differences
+        Take action based on the differences
+        """
+        txnDiffs = [txn for txn in newState if txn not in oldState]
+        return txnDiffs
+        # for txn in txnDiffs:
+        #     for key in txn.keys():
+        #         if not txn.get(key):
+        #             self.handle_none(txn)
+        #         elif key == txn.get(key, None):
+        #             self.handle_equals(txn)
+        #         elif key != txn.get(key,None) and txn.get(key,None) is not None:
+        #             self.handle_diff(txn)
+
+    # def handle_none(self, txn):
+    #     """
+    #     Does nothing, but anything which inherits must override.
+    #     """
+    #     pass
+
+    # def handle_equals(self, txn):
+    #     """
+    #     Does nothing, but anything which inherits must override.
+    #     """
+    #     pass
+
+    # def handle_diff(self, txn):
+    #     """
+    #     Does nothing, but anything which inherits must override.
+    #     """
+    #     pass
 
     def handler(self):
         '''
@@ -196,6 +284,11 @@ class Developer(BlockchainClient):
 class Listener(BlockchainClient):
     from core.EventTypes import ListenerEventTypes
 
+    CALLBACKS = {
+        ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
+        ListenerEventTypes.UNDEFINED.name: do_nothing,
+    }
+
     def __init__(self, config_manager, comm_mgr):
         super().__init__(config_manager)
         self.comm_mgr = comm_mgr
@@ -235,7 +328,7 @@ class Listener(BlockchainClient):
         on the blockchain; listener should look for this, and if the method signature 
         contains its node id, it will trigger a callback
         '''
-        pass
+        self.filter_set(lambda x: x[0] == x.get(x[0]), self.handle_decentralized_learning)
 
     def broadcast_new_weights(self, payload: dict):
         '''
@@ -254,14 +347,13 @@ class Listener(BlockchainClient):
         listener should look for this, and if the method signature contains its node id, 
         it will trigger a callback
         '''
-        pass
+        self.filter_set(lambda x: x[0] != x.get(x[0]), self.handle_new_weights)
 
     def listen_terminate(self):
-        pass
-    CALLBACKS = {
-        ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
-        ListenerEventTypes.UNDEFINED.name: do_nothing,
-    }
+        """
+        Polls blockchain to see whether to terminate
+        """
+        self.filter_set(lambda x: x.get(x[0]) is None, self.handle_terminate)
 
     def inform(self, event_type, payload):
         '''
