@@ -33,16 +33,15 @@ class Client(object):
         TODO: Refactor dependencies
         '''
         config = config_manager.get_config()
-        self.state = {}
+        self.state = []
         self.host = config.get("BLOCKCHAIN", "host")
         self.port = config.get("BLOCKCHAIN", "port")
         self.client = None
-        self.state = [{}]
         try:
             self.client = ipfsapi.connect(self.host, self.port)
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
-    
+
     async def start_listening(self, event_filter, handler, poll_interval=5):
         while True:
             filtered_diffs = self.get_state_diffs(event_filter, handler)
