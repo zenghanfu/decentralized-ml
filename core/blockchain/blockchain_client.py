@@ -46,7 +46,7 @@ class Client(object):
     ##########################################################################
     ###                            API SECTION                             ###
     ##########################################################################
-    
+
     async def start_listening(self, event_filter, handler, poll_interval=5):
         while True:
             filtered_diffs = self.get_state_diffs(event_filter, handler)
@@ -326,7 +326,8 @@ class Listener(BlockchainClient):
         '''
         key = payload.get("key", None)
         weights = payload.get("weights", None)
-        self.setter(key, weights)
+        tx_receipt = self.setter(key, weights)
+        return tx_receipt
 
     def listen_new_weights(self):
         '''
