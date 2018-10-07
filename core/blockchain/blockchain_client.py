@@ -2,6 +2,8 @@ import base58
 import json
 import logging
 import os
+import requests
+import asyncio
 
 import ipfsapi
 
@@ -24,14 +26,89 @@ class BlockchainClient(object):
         TODO: Decide if `kv` is needed
         TODO: Refactor dependencies
         '''
-        config = config_manager.get_config()
+        self.config = config_manager.get_config()
         self.kv = {}
         self.client = None
+        self.state = [{}]
         try:
-            self.client = ipfsapi.connect(config.get("BLOCKCHAIN", "host"),
-                                            config.get("BLOCKCHAIN", "port"))
+            self.client = ipfsapi.connect(self.config.get("BLOCKCHAIN", "host"),
+                                            self.config.get("BLOCKCHAIN", "port"))
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
+    
+    async def start_listening(self, event_filter, handler, poll_interval=5):
+        while True:
+            filtered_diffs = self.get_state_diffs(event_filter, handler)
+            if filtered_diffs:
+                return filtered_diffs
+            await asyncio.sleep(poll_interval)
+
+    def filter_set(self, event_filter, handler):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(self.start_listening(
+                event_filter, handler
+            ))
+            # inter = loop.run_until_complete(
+                # self.start_listening(event_filter, handler))
+            # check = handler(inter)
+        finally:
+            loop.close()
+        return check
+
+    def get_state_diffs(self, event_filter, handler):
+        """
+        Gets state, then finds diffs, then sets state of blockchain.
+        """
+        new_state = self.get_state()
+        state_diffs = self.get_diffs(self.state, new_state)
+        filtered_diffs = [handler(txn) if event_filter(txn) for txn in state_diffs]
+        return filtered_diffs
+
+    def get_state(self):
+        """
+        Read state of blockchain
+        """
+        newState = requests.get("http://localhost:{0}/state".format(self.config.port))
+        return newState
+        # diffs = self.get_diffs(self.state, newState)
+        # self.state = newState
+        # return diffs
+
+    def get_diffs(self, oldState: str, newState: str) -> str:
+        """
+        Iterate through oldState and newState to see any differences
+        Take action based on the differences
+        """
+        txnDiffs = [txn for txn in newState if txn not in oldState]
+        return txnDiffs
+        # for txn in txnDiffs:
+        #     for key in txn.keys():
+        #         if not txn.get(key):
+        #             self.handle_none(txn)
+        #         elif key == txn.get(key, None):
+        #             self.handle_equals(txn)
+        #         elif key != txn.get(key,None) and txn.get(key,None) is not None:
+        #             self.handle_diff(txn)
+
+    # def handle_none(self, txn):
+    #     """
+    #     Does nothing, but anything which inherits must override.
+    #     """
+    #     pass
+
+    # def handle_equals(self, txn):
+    #     """
+    #     Does nothing, but anything which inherits must override.
+    #     """
+    #     pass
+
+    # def handle_diff(self, txn):
+    #     """
+    #     Does nothing, but anything which inherits must override.
+    #     """
+    #     pass
 
     def setter(self, key: str, value: object) -> str:
         '''
@@ -131,6 +208,7 @@ class Listener(BlockchainClient):
         super().__init__(config_manager)
         self.comm_mgr = comm_mgr
         self.comm_mgr.configure_listener(self)
+
     def handle_decentralized_learning(self, key: str, value: str):
         """
         Downloads parameters of decentralized_learning() query and 
@@ -142,6 +220,7 @@ class Listener(BlockchainClient):
         """
         args = self.getter(key, value)
         self.comm_mgr.inform("new_session", args)
+
     def handle_new_weights(self, key: str, value: str):
         """
         handle_new_weights() method downloads weights and does smth with it
@@ -153,8 +232,10 @@ class Listener(BlockchainClient):
         weights = self.getter(key, value)
         #TODO: Put into in-memory datastore.
         self.comm_mgr.inform("new_weights", weights)
+    
     def handle_terminate(self):
         self.comm_mgr.inform("TERMINATE", None)
+    
     def listen_decentralized_learning(self):
         """
         Polls blockchain for node ID in decentralized_learning() method signature
@@ -162,7 +243,8 @@ class Listener(BlockchainClient):
         on the blockchain; listener should look for this, and if the method signature 
         contains its node id, it will trigger a callback
         """
-        pass
+        self.filter_set(lambda x: x[0] == x.get(x[0]), self.handle_decentralized_learning)
+
     def broadcast_new_weights(self, payload: dict):
         """
         broadcast_new_weights() method with all relevant parameters
@@ -172,6 +254,7 @@ class Listener(BlockchainClient):
         key = payload.get("key", None)
         weights = payload.get("weights", None)
         self.setter(key, weights)
+
     def listen_new_weights(self):
         """
         Polls blockchain for node ID in new_weights() method signature
@@ -179,13 +262,19 @@ class Listener(BlockchainClient):
         listener should look for this, and if the method signature contains its node id, 
         it will trigger a callback
         """
-        pass
+        self.filter_set(lambda x: x[0] != x.get(x[0]), self.handle_new_weights)
+
     def listen_terminate(self):
-        pass
+        """
+        Polls blockchain to see whether to terminate
+        """
+        self.filter_set(lambda x: x.get(x[0]) is None, self.handle_terminate)
+
     CALLBACKS = {
         ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
         ListenerEventTypes.UNDEFINED.name: do_nothing,
     }
+
     def inform(self, event_type, payload):
         """
         Method called by other modules to inform the Listener about
@@ -200,6 +289,7 @@ class Listener(BlockchainClient):
         relay this info to the Listener, and the Listener uploads weights.
         """
         self._parse_and_run_callback(event_type, payload)
+        
     def _parse_and_run_callback(self, event_type, payload):
         """
         Parses an actionable_event and runs the
