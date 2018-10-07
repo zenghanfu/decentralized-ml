@@ -32,28 +32,20 @@ class Client(object):
         '''
         TODO: Refactor dependencies
         '''
-<<<<<<< HEAD
         config = config_manager.get_config()
         self.state = {}
         self.host = config.get("BLOCKCHAIN", "host")
         self.port = config.get("BLOCKCHAIN", "port")
-=======
-        self.config = config_manager.get_config()
-        self.kv = {}
-        self.client_id = config.get("BLOCKCHAIN", "client_id")
-        self.checksum = "lgtm"
->>>>>>> cd8cc7bb6c0b0d4809f35ac4a61edef07be0e80d
         self.client = None
         self.state = [{}]
         try:
-<<<<<<< HEAD
             self.client = ipfsapi.connect(self.host, self.port)
-=======
-            self.client = ipfsapi.connect(self.config.get("BLOCKCHAIN", "host"),
-                                            self.config.get("BLOCKCHAIN", "port"))
->>>>>>> cd8cc7bb6c0b0d4809f35ac4a61edef07be0e80d
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
+
+    ##########################################################################
+    ###                            API SECTION                             ###
+    ##########################################################################
     
     async def start_listening(self, event_filter, handler, poll_interval=5):
         while True:
@@ -145,10 +137,6 @@ class Client(object):
         for i in range(len_new_state - len_state, len_new_state):
             self.handler(new_state[i])
             self.state.append(new_state[i])
-
-    ##########################################################################
-    ###                            API SECTION                             ###
-    ##########################################################################
 
     def setter(self, key: str, value: object) -> str:
         '''
