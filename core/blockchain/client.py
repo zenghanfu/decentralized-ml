@@ -2,6 +2,7 @@ import base58
 import json
 import logging
 import os
+import requests
 
 import ipfsapi
 
@@ -20,18 +21,18 @@ class Client(object):
     with the blockchain.
     '''
     # TODO: enum-like casting for multiple datatypes, if needed
-    # OBJ_TYPES = {str: IPFS._cast_str, dict: IPFS._cast_dict}
+    # OBJ_TYPES = {str: Client._cast_str, dict: Client._cast_dict}
 
     with open("./core/blockchain/blockchain_config.json", "r") as read_file:
         CONFIG = json.load(read_file)
 
-    def __init__(self, config_manager, model_id):
+    def __init__(self, config_manager):
         '''
         TODO: Decide if `kv` is needed
+        TODO: Decide if one client instantiated per model or not
         TODO: Refactor dependencies
         '''
         config = config_manager.get_config()
-        self.model_id = model_id
         self.kv = {}
         self.client_id = config.get("BLOCKCHAIN", "client_id")
         self.checksum = "lgtm"
@@ -49,14 +50,16 @@ class Client(object):
     def setter(self, key: str, value: object) -> str:
         '''
         Provided a key and a JSON/np.array object, upload the object to
-        IPFS and then store the hash as the value on the blockchain
-        TODO: blockchain setter API required
+        IPFS and then store the hash as the value on the blockchain. The key
+        should be a backward reference to a prior tx
         '''
         on_chain_addr = self._upload(value)
-        # TODO: add error checking to async call
-        # try:
-        tx_receipt = "some http call with key and value=on_chain_addr"
-        # except:
+        try:
+            tx_receipt = requests.post("http://localhost:{0}/txs".format(self.port),
+                                        "{'{0}': '{1}'}".format(key, value))
+            tx_receipt.raise_for_status()
+        except Exception as e:
+            logging.info("HTTP Request error, got: {0}".format(e))
         return tx_receipt
 
     def getter(self, key: str) -> object:
@@ -144,50 +147,37 @@ class Client(object):
     ###                         DEVELOPER SECTION                          ###
     ##########################################################################
 
-    def broadcast_decentralized_learning(self, model: object, weights: object,
-                                            ED: object)-> str:
+    def broadcast_decentralized_learning(self, model_config: object)-> str:
         '''
         Upload a model config and weights to the blockchain
         '''
-        key = self.construct_header()
-        tx_receipt = self.setter(key, model, weights)
+        key = self.construct_header(model_config)
+        tx_receipt = self.setter(key, key)
         return tx_receipt
 
-    def construct_header(self, model: object, weights: object) -> str:
-        # TODO: lol
-        weights_hash = ""
-        model_hash = ""
-        header = {
-            "originator": self.client_id,
-            "integrity_check": self.checksum,
-            "model_id": self.model_id,
-            "contributors": [],
-            "current_weights": weights_hash,
-            "initial_model": model_hash
+    def construct_value(self, model_config: object) -> str:
+        value = {
+            "config": model_config
         }
         retval = str(header)
         return retval
-
-    def update_weights(self, model) -> str:
-        '''
-        Given a model, extract the weights and reupload them to the blockchain
-        '''
-        pass
-        # return tx_receipt
 
     def broadcast_terminate(self) -> None:
         '''
         Terminates decentralized training
         '''
-        pass
+        key = self.construct_header(model_config)
+        tx_receipt = self.setter(key, None)
+        return tx_receipt
 
-    def handle_decentralized_learning(self) -> None:
+    def handle_decentralized_learning(self, key) -> None:
         '''
         Return weights after training terminates
         '''
-        pass
+        final_weights = self.getter(key)
+        return final_weights
 
     ##########################################################################
-    ###                         LISTERNER SECTION                          ###
+    ###                          PROVIDER SECTION                          ###
     ##########################################################################
 
