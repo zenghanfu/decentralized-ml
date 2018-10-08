@@ -1,9 +1,9 @@
+import asyncio
 import base58
 import json
 import logging
 import os
 import requests
-import asyncio
 
 import ipfsapi
 
@@ -42,6 +42,10 @@ class Client(object):
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
 
+    ##########################################################################
+    ###                            API SECTION                             ###
+    ##########################################################################
+
     async def start_listening(self, event_filter, handler, poll_interval=5):
         while True:
             filtered_diffs = self.get_state_diffs(event_filter, handler)
@@ -69,7 +73,7 @@ class Client(object):
         """
         new_state = self.get_state()
         state_diffs = self.get_diffs(self.state, new_state)
-        filtered_diffs = [handler(txn) if event_filter(txn) for txn in state_diffs]
+        filtered_diffs = [handler(txn) for txn in state_diffs if event_filter(txn)]
         return filtered_diffs
 
     def get_state(self):
@@ -132,10 +136,6 @@ class Client(object):
         for i in range(len_new_state - len_state, len_new_state):
             self.handler(new_state[i])
             self.state.append(new_state[i])
-
-    ##########################################################################
-    ###                            API SECTION                             ###
-    ##########################################################################
 
     def setter(self, key: str, value: object) -> str:
         '''
@@ -302,7 +302,7 @@ class Listener(BlockchainClient):
         -which should do the moving average.
         '''
         weights = self.getter(key, value)
-        #TODO: Put into in-memory datastore.
+        # TODO: Put into in-memory datastore.
         self.comm_mgr.inform("new_weights", weights)
 
     def handle_terminate(self):
