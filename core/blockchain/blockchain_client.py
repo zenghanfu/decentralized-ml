@@ -1,25 +1,27 @@
+import asyncio
 import base58
 import json
 import logging
 import os
 import requests
-import asyncio
 
 import ipfsapi
 
-from core.configuration import ConfigurationManager
-from core.utils.keras import serialize_weights, deserialize_weights
-from custom.keras import model_from_serialized, get_optimizer
+# from core.configuration import ConfigurationManager
 
 
 logging.basicConfig(level=logging.DEBUG,
     format='[Blockchain Client] %(message)s')
 
 
-class Client(object):
+class BlockchainClient(object):
     '''
     The blockchain client exposes `setter` and `getter` in order to interact
     with the blockchain.
+
+    In order for this to work, the following must be running:
+        IPFS Daemon: `ipfs deamon`
+        The lotion app: `node app.js` from the application root directory
     '''
     # TODO: enum-like casting for multiple datatypes, if needed
     # OBJ_TYPES = {str: Client._cast_str, dict: Client._cast_dict}
@@ -28,18 +30,21 @@ class Client(object):
     # with open("./core/blockchain/blockchain_config.json", "r") as read_file:
     #     CONFIG = json.load(read_file)
 
-    def __init__(self, config_manager):
+    def __init__(self):
         '''
         TODO: Refactor dependencies
+        TODO: Figure out core dependency issue
         '''
-        config = config_manager.get_config()
-        self.state = {}
-        self.host = config.get("BLOCKCHAIN", "host")
-        self.port = config.get("BLOCKCHAIN", "port")
+        # config = config_manager.get_config()
+        self.state = []
+        # self.host = config.get("BLOCKCHAIN", "host")
+        # self.port = config.get("BLOCKCHAIN", "port")
+        self.host = '127.0.0.1'
+        self.ipfs_port = 5001
+        self.port = 3000
         self.client = None
-        self.state = [{}]
         try:
-            self.client = ipfsapi.connect(self.host, self.port)
+            self.client = ipfsapi.connect(self.host, self.ipfs_port)
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
 
@@ -74,7 +79,7 @@ class Client(object):
         """
         new_state = self.get_state()
         state_diffs = self.get_diffs(self.state, new_state)
-        filtered_diffs = [handler(txn) if event_filter(txn) for txn in state_diffs]
+        filtered_diffs = [handler(txn) for txn in state_diffs if event_filter(txn)]
         return filtered_diffs
 
     def get_state(self):
@@ -121,9 +126,9 @@ class Client(object):
     #     """
     #     pass
 
-    def handler(self):
+    def handler(self, new_tx: dict) -> None:
         '''
-        Called on new transactions
+        Called on new transactions in `update_state`
         '''
         pass
 
@@ -144,10 +149,13 @@ class Client(object):
         IPFS and then store the hash as the value on the blockchain. The key
         should be a backward reference to a prior tx
         '''
-        on_chain_addr = self._upload(value)
+        logging.info("Posting to blockchain...")
+        on_chain_value = self._upload(value)
+        # tx = "{" + key + ": " + on_chain_value + "}"
+        tx = {key: on_chain_value}
         try:
             tx_receipt = requests.post("http://localhost:{0}/txs".format(self.port),
-                                        "{'{0}': '{1}'}".format(key, value))
+                                        json=tx)
             tx_receipt.raise_for_status()
         except Exception as e:
             logging.info("HTTP Request error, got: {0}".format(e))
@@ -155,36 +163,38 @@ class Client(object):
 
     def getter(self, key: str) -> object:
         '''
-        Provided a key, get the IPFS hash from the blockchain and download
-        the object from IPFS
+        First, get the latest state. Next, provided a key, get the IPFS hash
+        from the blockchain and download the object from IPFS
         '''
+        logging.info("Getting latest state from blockchain...")
         try:
             tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
             tx_receipt.raise_for_status()
         except Exception as e:
             logging.info("HTTP Request error, got: {0}".format(e))
-        self.state = tx_receipt.json()
-        retval = self._download(on_chain_addr)
+        self.update_state(tx_receipt.json())
+        retval = self._download(key)
         return retval
 
     def _upload(self, obj: object) -> str:
         '''
         Provided any Python object, store it on IPFS and then upload
-        the hash to the blockchain
+        the hash that will be uploaded to the blockchain as a value
         '''
         ipfs_hash = self._content_to_ipfs(obj)
-        byte_addr = self._ipfs_to_blockchain(ipfs_hash)
-        return addr
+        # TODO: No need for byte-encoding at this time
+        # byte_addr = self._ipfs_to_blockchain(ipfs_hash)
+        return str(ipfs_hash)
 
-    def _download(self, byte_addr: bytes) -> object:
+    def _download(self, key: str) -> object:
         '''
-        Provided an on-chain content address, retrieve the Python
-        object from IPFS
-        TODO: blockchain getter API required
+        Provided an on-chain key, retrieve the value from local state and
+        retrieve the Python object from IPFS
+        TODO: implement a better way to parse through state list
+        TODO: user needs to get from IPFS addresses for now
         '''
-        ipfs_hash = self._blockchain_to_ipfs(byte_addr)
-        content = self._ipfs_to_content(ipfs_hash)
-        return content
+        relevant_txs = [x for x in self.state if (key in x.keys())]
+        return self.state
 
     def _ipfs_to_content(self, ipfs_hash: str) -> object:
         '''
@@ -197,19 +207,19 @@ class Client(object):
         Helper function to deploy a Python object onto IPFS, 
         returns an IPFS hash
         '''
-        return self.client.add(obj)
+        return self.client.add_json(obj)
 
     def _ipfs_to_blockchain(self, ipfs_hash: str) -> bytes:
         '''
         Helper function to convert IPFS hashes to on-chain content addresses
         '''
-        return base58.b58encode(b'\x12 ' + ipfs_hash)
+        return base58.b58encode(ipfs_hash)
 
     def _blockchain_to_ipfs(self, byte_addr: bytes) -> str:
         '''
         Helper function to convert on-chain content addresses to IPFS hashes
         '''
-        return base58.b58decode(byte_addr)[2:]
+        return base58.b58decode(byte_addr)
 
     def _cast_str(self, input: str):
         '''
@@ -232,37 +242,35 @@ class Developer(BlockchainClient):
     The developer is able to initiate and terminate training on the blockchain.
     '''
 
-    def __init__(self, config_manager):
-        super().__init__(config_manager)
+    def __init__(self):
+        # super().__init__(config_manager)
+        super().__init__()
+
+    def construct_header(self, prev_header: str, new_header: object) -> str:
+        return prev_header + str(new_header)
 
     def broadcast_decentralized_learning(self, model_config: object)-> str:
         '''
         Upload a model config and weights to the blockchain
         '''
-        key = self.construct_header(model_config)
-        tx_receipt = self.setter(key, key)
+        header = construct_header("", model_config)
+        tx_receipt = self.setter(header, model_config)
         return tx_receipt
 
-    def construct_value(self, model_config: object) -> str:
-        value = {
-            "config": model_config
-        }
-        retval = str(header)
-        return retval
-
-    def broadcast_terminate(self) -> None:
+    def broadcast_terminate(self, model_config: object) -> None:
         '''
         Terminates decentralized training
         '''
-        key = self.construct_header(model_config)
-        tx_receipt = self.setter(key, None)
+        header = self.construct_header("", model_config)
+        tx_receipt = self.setter(header, None)
         return tx_receipt
 
-    def handle_decentralized_learning(self, key) -> None:
+    def handle_decentralized_learning(self, model_config: object) -> None:
         '''
         Return weights after training terminates
         '''
-        final_weights = self.getter(key)
+        header = self.construct_header("", model_config)
+        final_weights = self.getter(header)
         return final_weights
 
     ##########################################################################
@@ -270,12 +278,12 @@ class Developer(BlockchainClient):
     ##########################################################################
 
 class Listener(BlockchainClient):
-    from core.EventTypes import ListenerEventTypes
+    # from core.EventTypes import ListenerEventTypes
 
-    CALLBACKS = {
-        ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
-        ListenerEventTypes.UNDEFINED.name: do_nothing,
-    }
+    # CALLBACKS = {
+    #     ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
+    #     ListenerEventTypes.UNDEFINED.name: do_nothing,
+    # }
 
     def __init__(self, config_manager, comm_mgr):
         super().__init__(config_manager)
@@ -303,7 +311,7 @@ class Listener(BlockchainClient):
         -which should do the moving average.
         '''
         weights = self.getter(key, value)
-        #TODO: Put into in-memory datastore.
+        # TODO: Put into in-memory datastore.
         self.comm_mgr.inform("new_weights", weights)
 
     def handle_terminate(self):
@@ -368,5 +376,6 @@ class Listener(BlockchainClient):
         and sending the raw payload to the callback function, which will handle
         everything from there on.
         '''
-        callback = EVENT_TYPE_CALLBACKS.get(event_type, ListenerEventTypes.UNDEFINED.value)
-        callback(payload)
+        pass
+        # callback = EVENT_TYPE_CALLBACKS.get(event_type, ListenerEventTypes.UNDEFINED.value)
+        # callback(payload)
