@@ -67,9 +67,9 @@ class BlockchainClient(object):
     #         loop.run_until_complete(self.start_listening(
     #             event_filter, handler
     #         ))
-            # inter = loop.run_until_complete(
-                # self.start_listening(event_filter, handler))
-            # check = handler(inter)
+        #     inter = loop.run_until_complete(
+        #         self.start_listening(event_filter, handler))
+        #     check = handler(inter)
         # finally:
         #     loop.close()
         # return check
@@ -114,7 +114,7 @@ class BlockchainClient(object):
         should be a backward reference to a prior tx
         '''
         logging.info("Posting to blockchain...")
-        on_chain_value = self._upload(value)
+        on_chain_value = self._upload(value) if value else None
         tx = {key: on_chain_value}
         try:
             tx_receipt = requests.post("http://localhost:{0}/txs".format(self.port),
@@ -177,18 +177,6 @@ class BlockchainClient(object):
         '''
         return self.client.add_json(obj)
 
-    def _ipfs_to_blockchain(self, ipfs_hash: str) -> bytes:
-        '''
-        Helper function to convert IPFS hashes to on-chain content addresses
-        '''
-        return base58.b58encode(ipfs_hash)
-
-    def _blockchain_to_ipfs(self, byte_addr: bytes) -> str:
-        '''
-        Helper function to convert on-chain content addresses to IPFS hashes
-        '''
-        return base58.b58decode(byte_addr)
-
     def _cast_str(self, input: str):
         '''
         Helper function to cast string inputs to desired type
@@ -228,6 +216,7 @@ class Developer(BlockchainClient):
     def broadcast_terminate(self, model_config: object) -> None:
         '''
         Terminates decentralized training
+        TODO: check if training even started
         '''
         header = self.construct_header("", model_config)
         tx_receipt = self.setter(header, None)
