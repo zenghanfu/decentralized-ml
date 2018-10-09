@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import requests
+import time
 
 import ipfsapi
 
@@ -52,96 +53,59 @@ class BlockchainClient(object):
     ###                            API SECTION                             ###
     ##########################################################################
 
-    async def start_listening(self, event_filter, handler, poll_interval=5):
-        while True:
-            filtered_diffs = self.get_state_diffs(event_filter, handler)
-            if filtered_diffs:
-                return filtered_diffs
-            await asyncio.sleep(poll_interval)
+    # async def start_listening(self, event_filter, handler, poll_interval=5):
+    #     while True:
+    #         filtered_diffs = self.get_state_diffs(event_filter, handler)
+    #         if filtered_diffs:
+    #             return filtered_diffs
+    #         await asyncio.sleep(poll_interval)
 
-    def filter_set(self, event_filter, handler):
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        loop = asyncio.get_event_loop()
-        try:
-            loop.run_until_complete(self.start_listening(
-                event_filter, handler
-            ))
+    # def filter_set(self, event_filter, handler):
+    #     asyncio.set_event_loop(asyncio.new_event_loop())
+    #     loop = asyncio.get_event_loop()
+    #     try:
+    #         loop.run_until_complete(self.start_listening(
+    #             event_filter, handler
+    #         ))
             # inter = loop.run_until_complete(
                 # self.start_listening(event_filter, handler))
             # check = handler(inter)
-        finally:
-            loop.close()
-        return check
+        # finally:
+        #     loop.close()
+        # return check
 
-    def get_state_diffs(self, event_filter, handler):
-        """
-        Gets state, then finds diffs, then sets state of blockchain.
-        """
-        new_state = self.get_state()
-        state_diffs = self.get_diffs(self.state, new_state)
-        filtered_diffs = [handler(txn) for txn in state_diffs if event_filter(txn)]
-        return filtered_diffs
+    # def get_state_diffs(self, event_filter, handler):
+    #     """
+    #     Gets state, then finds diffs, then sets state of blockchain.
+    #     """
+    #     new_state = self.get_state()
+    #     state_diffs = self.get_diffs(self.state, new_state)
+    #     filtered_diffs = [handler(txn) for txn in state_diffs if event_filter(txn)]
+    #     return filtered_diffs
 
-    def get_state(self):
+    def get_local_state(self):
         """
-        Read state of blockchain
+        Read local state of blockchain
         """
-        newState = requests.get("http://localhost:{0}/state".format(self.config.port))
-        return newState
-        # diffs = self.get_diffs(self.state, newState)
-        # self.state = newState
-        # return diffs
-
-    def get_diffs(self, oldState: str, newState: str) -> str:
-        """
-        Iterate through oldState and newState to see any differences
-        Take action based on the differences
-        """
-        txnDiffs = [txn for txn in newState if txn not in oldState]
-        return txnDiffs
-        # for txn in txnDiffs:
-        #     for key in txn.keys():
-        #         if not txn.get(key):
-        #             self.handle_none(txn)
-        #         elif key == txn.get(key, None):
-        #             self.handle_equals(txn)
-        #         elif key != txn.get(key,None) and txn.get(key,None) is not None:
-        #             self.handle_diff(txn)
-
-    # def handle_none(self, txn):
-    #     """
-    #     Does nothing, but anything which inherits must override.
-    #     """
-    #     pass
-
-    # def handle_equals(self, txn):
-    #     """
-    #     Does nothing, but anything which inherits must override.
-    #     """
-    #     pass
-
-    # def handle_diff(self, txn):
-    #     """
-    #     Does nothing, but anything which inherits must override.
-    #     """
-    #     pass
+        return self.state
 
     def handler(self, new_tx: dict) -> None:
         '''
         Called on new transactions in `update_state`
+        TODO: actually does something
         '''
         pass
 
-    def update_state(self, new_state: [dict]) -> None:
+    def update_state(self, new_state_wrapper: [dict]) -> None:
         '''
         Given the freshly-downloaded state, call a handler on each transaction
         that was not already present in our own state
         '''
-        len_new_state = len(new_state)
+        new_state = dict(new_state_wrapper)['messages']
         len_state = len(self.state)
-        for i in range(len_new_state - len_state, len_new_state):
-            self.handler(new_state[i])
-            self.state.append(new_state[i])
+        for i in new_state[len_state:]:
+            self.handler(i)
+            self.state.append(i)
 
     def setter(self, key: str, value: object) -> str:
         '''
@@ -151,7 +115,6 @@ class BlockchainClient(object):
         '''
         logging.info("Posting to blockchain...")
         on_chain_value = self._upload(value)
-        # tx = "{" + key + ": " + on_chain_value + "}"
         tx = {key: on_chain_value}
         try:
             tx_receipt = requests.post("http://localhost:{0}/txs".format(self.port),
@@ -167,11 +130,16 @@ class BlockchainClient(object):
         from the blockchain and download the object from IPFS
         '''
         logging.info("Getting latest state from blockchain...")
-        try:
-            tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
-            tx_receipt.raise_for_status()
-        except Exception as e:
-            logging.info("HTTP Request error, got: {0}".format(e))
+        timeout = time.time() + 5
+        while time.time() < timeout:
+            try:
+                tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
+                tx_receipt.raise_for_status()
+            except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
+                logging.info("HTTP Request error, got: {0}".format(e))
+                continue
+            if tx_receipt:
+                break
         self.update_state(tx_receipt.json())
         retval = self._download(key)
         return retval
@@ -194,7 +162,7 @@ class BlockchainClient(object):
         TODO: user needs to get from IPFS addresses for now
         '''
         relevant_txs = [x for x in self.state if (key in x.keys())]
-        return self.state
+        return relevant_txs
 
     def _ipfs_to_content(self, ipfs_hash: str) -> object:
         '''
@@ -253,7 +221,7 @@ class Developer(BlockchainClient):
         '''
         Upload a model config and weights to the blockchain
         '''
-        header = construct_header("", model_config)
+        header = self.construct_header("", model_config)
         tx_receipt = self.setter(header, model_config)
         return tx_receipt
 
@@ -268,6 +236,7 @@ class Developer(BlockchainClient):
     def handle_decentralized_learning(self, model_config: object) -> None:
         '''
         Return weights after training terminates
+        TODO: add condition to check if training for specific model has terminated
         '''
         header = self.construct_header("", model_config)
         final_weights = self.getter(header)
