@@ -340,10 +340,5 @@ class BlockchainGateway(object):
         everything from there on.
         """
         logging.info("payload:{}".format(payload))
-<<<<<<< HEAD
-        callback = self.CALLBACKS.get(event_type, ListenerEventTypes.UNDEFINED.value)
-=======
-        # pass
         callback = self.CALLBACKS.get(event_type, ListenerEventTypes.NOTHING.value)
->>>>>>> 862b102910ba9f89bc17e959956610795fc714f4
         callback(payload)
