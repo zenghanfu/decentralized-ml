@@ -121,8 +121,6 @@ class BlockchainGateway(object):
         the hash that will be uploaded to the blockchain as a value
         '''
         ipfs_hash = self._content_to_ipfs(obj)
-        # TODO: No need for byte-encoding at this time
-        # byte_addr = self._ipfs_to_blockchain(ipfs_hash)
         return str(ipfs_hash)
 
     def _download(self, key: str) -> object:
@@ -132,14 +130,15 @@ class BlockchainGateway(object):
         TODO: implement a better way to parse through state list
         TODO: user needs to get from IPFS addresses for now
         '''
-        relevant_txs = [x for x in self.state if (x['key'] == key)]
+        relevant_txs = [self._ipfs_to_content(tx['content'])
+                            for tx in self.state if (tx['key'] == key)]
         return relevant_txs
 
     def _ipfs_to_content(self, ipfs_hash: str) -> object:
         '''
         Helper function to retrieve a Python object from an IPFS hash
         '''
-        return self.client.get(addr)
+        return self.client.get(ipfs_hash)
 
     def _content_to_ipfs(self, obj: object) -> str:
         '''
@@ -213,9 +212,6 @@ class BlockchainGateway(object):
         asyncio.set_event_loop(asyncio.new_event_loop())
         loop = asyncio.get_event_loop()
         try:
-            # loop.run_until_complete(self.start_listening(
-            #     event_filter, handler
-            # ))
             filtered_diffs = loop.run_until_complete(
                 self.start_listening(event_filter, handler))
             check = [handler(diff) for diff in filtered_diffs]
