@@ -66,13 +66,16 @@ class CommunicationManager(object):
         """
         # NOTE: We removed the 'optimizer_type' argument since for the MVP we're
         # only considering the 'FederatedAveragingOptimizer' for now.
-        session_id, serialized_job, network, optimizer_params = payload
+        logging.info("New optimizer session is being set up")
+        # TODO: Use session_id
+        session_id = payload.get('key')
+        optimizer_params = payload.get('content')
         self.optimizer = FederatedAveragingOptimizer(optimizer_params)
         actionable_event = self.optimizer.kickoff()
         self._parse_and_run_callback(actionable_event)
     
     def deserialize_job(self, payload):
-        pass
+        return payload
     
     def _schedule_job(self, payload):
         """
@@ -126,14 +129,17 @@ class CommunicationManager(object):
         node is done training a particular model, to which the Optimizer could
         decide it's time to communicate the new weights to the network.
         """
+        logging.info("information has been given: {}".format(event_type))
         event = {
             "raw_event_type": event_type,
             "payload": payload
         }
         if self.optimizer:
+            logging.info("optimizer available; asking optimizer")
             actionable_event = self.optimizer.ask(event)
             self._parse_and_run_callback(actionable_event)
         else:
+            logging.info("no optimizer available. this should be a create session")
             self._run_callback(event)
 
     def _run_callback(self, self_event):
@@ -142,7 +148,7 @@ class CommunicationManager(object):
         nothing.
         """
         event_type = self_event.get(
-            "event_type",
+            "raw_event_type",
             ActionableEventTypes.NOTHING.value
         )
         callback = self.ACTIONABLE_EVENT_TYPE_2_CALLBACK.get(event_type, ActionableEventTypes.NOTHING.value)
