@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG,
     format='[Blockchain Client] %(message)s')
 
 
-class BlockchainClient(object):
+class BlockchainGateway(object):
     '''
     The blockchain client exposes `setter` and `getter` in order to interact
     with the blockchain.
@@ -36,6 +36,10 @@ class BlockchainClient(object):
         TODO: Refactor dependencies
         TODO: Figure out core dependency issue
         '''
+        # TODO: `comm_mgr` is only used in a subset of methods, consider separating
+        self.comm_mgr = comm_mgr
+        self.comm_mgr.configure_listener(self)
+
         # config = config_manager.get_config()
         self.state = []
         # self.host = config.get("BLOCKCHAIN", "host")
@@ -53,48 +57,58 @@ class BlockchainClient(object):
     ###                            API SECTION                             ###
     ##########################################################################
 
-    # async def start_listening(self, event_filter, handler, poll_interval=5):
-    #     while True:
-    #         filtered_diffs = self.get_state_diffs(event_filter, handler)
-    #         if filtered_diffs:
-    #             return filtered_diffs
-    #         await asyncio.sleep(poll_interval)
+    async def start_listening(self, event_filter, handler, poll_interval=5):
+        while True:
+            filtered_diffs = self.get_state_diffs(event_filter, handler)
+            if filtered_diffs:
+                return filtered_diffs
+            await asyncio.sleep(poll_interval)
 
-    # def filter_set(self, event_filter, handler):
-    #     asyncio.set_event_loop(asyncio.new_event_loop())
-    #     loop = asyncio.get_event_loop()
-    #     try:
-    #         loop.run_until_complete(self.start_listening(
-    #             event_filter, handler
-    #         ))
-        #     inter = loop.run_until_complete(
-        #         self.start_listening(event_filter, handler))
-        #     check = handler(inter)
-        # finally:
-        #     loop.close()
-        # return check
+    def filter_set(self, event_filter, handler):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(self.start_listening(
+                event_filter, handler
+            ))
+            inter = loop.run_until_complete(
+                self.start_listening(event_filter, handler))
+            check = handler(inter)
+        finally:
+            loop.close()
+        return check
 
-    # def get_state_diffs(self, event_filter, handler):
-    #     """
-    #     Gets state, then finds diffs, then sets state of blockchain.
-    #     """
-    #     new_state = self.get_state()
-    #     state_diffs = self.get_diffs(self.state, new_state)
-    #     filtered_diffs = [handler(txn) for txn in state_diffs if event_filter(txn)]
-    #     return filtered_diffs
-
-    def get_local_state(self):
-        """
-        Read local state of blockchain
-        """
-        return self.state
+    def get_state_diffs(self, event_filter):
+        '''
+        Gets state, then finds diffs, then sets state of blockchain.
+        '''
+        new_state = self.get_global_state()
+        state_diffs = self.get_diffs(self.get_local_state(), new_state)
+        filtered_diffs = [self.handler(tx) for tx in state_diffs if event_filter(txn)]
+        return filtered_diffs
 
     def handler(self, new_tx: dict) -> None:
         '''
         Called on new transactions in `update_state`
         TODO: actually does something
         '''
-        pass
+        return new_tx
+
+    def get_global_state(self):
+        '''
+        Gets the global state with should be a list of dictionaries
+        '''
+        timeout = time.time() + 5
+        while time.time() < timeout:
+            try:
+                tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
+                tx_receipt.raise_for_status()
+            except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
+                logging.info("HTTP Request error, got: {0}".format(e))
+                continue
+            if tx_receipt:
+                break
+        return tx_receipt.json()
 
     def update_state(self, new_state_wrapper: [dict]) -> None:
         '''
@@ -104,8 +118,8 @@ class BlockchainClient(object):
         new_state = dict(new_state_wrapper)['messages']
         len_state = len(self.state)
         for i in new_state[len_state:]:
-            self.handler(i)
-            self.state.append(i)
+            new_item = self.handler(i)
+            self.state.append(new_item)
 
     def setter(self, key: str, value: object) -> str:
         '''
@@ -130,17 +144,6 @@ class BlockchainClient(object):
         from the blockchain and download the object from IPFS
         '''
         logging.info("Getting latest state from blockchain...")
-        timeout = time.time() + 5
-        while time.time() < timeout:
-            try:
-                tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
-                tx_receipt.raise_for_status()
-            except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
-                logging.info("HTTP Request error, got: {0}".format(e))
-                continue
-            if tx_receipt:
-                break
-        self.update_state(tx_receipt.json())
         retval = self._download(key)
         return retval
 
@@ -193,14 +196,9 @@ class BlockchainClient(object):
     ###                         DEVELOPER SECTION                          ###
     ##########################################################################
 
-class Developer(BlockchainClient):
     '''
     The developer is able to initiate and terminate training on the blockchain.
     '''
-
-    def __init__(self):
-        # super().__init__(config_manager)
-        super().__init__()
 
     def construct_header(self, prev_header: str, new_header: object) -> str:
         return prev_header + str(new_header)
@@ -222,7 +220,7 @@ class Developer(BlockchainClient):
         tx_receipt = self.setter(header, None)
         return tx_receipt
 
-    def handle_decentralized_learning(self, model_config: object) -> None:
+    def handle_decentralized_learning_owner(self, model_config: object) -> None:
         '''
         Return weights after training terminates
         TODO: add condition to check if training for specific model has terminated
@@ -235,7 +233,6 @@ class Developer(BlockchainClient):
     ###                          PROVIDER SECTION                          ###
     ##########################################################################
 
-class Listener(BlockchainClient):
     # from core.EventTypes import ListenerEventTypes
 
     # CALLBACKS = {
@@ -243,12 +240,7 @@ class Listener(BlockchainClient):
     #     ListenerEventTypes.UNDEFINED.name: do_nothing,
     # }
 
-    def __init__(self, config_manager, comm_mgr):
-        super().__init__(config_manager)
-        self.comm_mgr = comm_mgr
-        self.comm_mgr.configure_listener(self)
-
-    def handle_decentralized_learning(self, key: str, value: str):
+    def handle_decentralized_learning_trainer(self, key: str, value: str):
         '''
         Downloads parameters of decentralized_learning() query and 
         saves them appropriately to in-memory datastore
@@ -262,7 +254,7 @@ class Listener(BlockchainClient):
 
     def handle_new_weights(self, key: str, value: str):
         '''
-        handle_new_weights() method downloads weights and does smth with it
+        handle_new_weights() method downloads weights and does something with it
         This callback is triggered by the Listener when it sees new weights 
         intended for its node ID. Downloads the weights, and gives them to the
         comm. mgr which gives them to the relevant optimizer 
@@ -304,9 +296,9 @@ class Listener(BlockchainClient):
         self.filter_set(lambda x: x[0] != x.get(x[0]), self.handle_new_weights)
 
     def listen_terminate(self):
-        """
+        '''
         Polls blockchain to see whether to terminate
-        """
+        '''
         self.filter_set(lambda x: x.get(x[0]) is None, self.handle_terminate)
 
     def inform(self, event_type, payload):
