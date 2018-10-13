@@ -1,5 +1,5 @@
 import logging
-from core.utils.event_types import CommMgrEventTypes, ActionableEventTypes, CommMgrEventTypes
+from core.utils.event_types import CommMgrEventTypes, ActionableEventTypes
 from core.fedavgoptimizer import FederatedAveragingOptimizer
 # TODO: Need to import 'FederatedAveragingOptimizer' (@panda).
 
@@ -11,14 +11,11 @@ logging.basicConfig(level=logging.DEBUG,
 class CommunicationManager(object):
     """
     Communication Manager
-
     Manages the communication within the modules of the service throughout all
     active DML Sessions.
-
     Right now, the service can only have one session at a time. This will be
     reflected in the code by just having one optimizer property and no
     information about sessions throughout the code.
-
     """
 
     def __init__(self, config_manager):
@@ -66,7 +63,7 @@ class CommunicationManager(object):
         """
         # NOTE: We removed the 'optimizer_type' argument since for the MVP we're
         # only considering the 'FederatedAveragingOptimizer' for now.
-        logging.info("New optimizer session is being set up")
+        logging.info("New optimizer session is being set up: {}".format(payload))
         # TODO: Use session_id
         session_id = payload.get('key')
         optimizer_params = payload.get('content')

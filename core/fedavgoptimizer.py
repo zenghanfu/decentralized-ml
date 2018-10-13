@@ -22,7 +22,7 @@ class FederatedAveragingOptimizer(Machine):
 				['splitting', 'training', 'communicating', 'averaging', 'terminate'])
 		transitions = kwargs.get('transitions',
 			[
-			{'train_iter', 'training', None, after='increment_train_iter'},
+			# {'train_iter', 'training', None, after='increment_train_iter'},
 			# ['failure', ['splitting', 'training', 'communicating', 'averaging'], '=', after='raise_exception'],
 			# ['train_iter', 'training', None, after='increment_train_iter'],
 			['done_training', 'training', 'communicating'],
@@ -97,12 +97,12 @@ class FederatedAveragingOptimizer(Machine):
 		Parses an event dictionary into a callback.
 		If the callback is not defined, it does nothing.
 		"""
-		event_type = event.get('EventType')
+		event_type = event.get('raw_event_type')
 		callback = self.CALLBACKS[CommMgrEventTypes.NOTHING.name]
 		if event_type in self.CALLBACKS:
 			callback = self.CALLBACKS[event_type]
 		callback(event)
-		event['optimizer_state'] = self.state
+		event['actionable_event_type'] = self.state
 		return event
 
 	def configure(self, CommMgr):
