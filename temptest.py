@@ -7,5 +7,5 @@ configmgr = None
 commmgr = CommunicationManager(configmgr)
 blck = BlockchainGateway(configmgr, commmgr)
 commmgr.configure_listener(blck)
-blck.broadcast_decentralized_learning("decentralized learning")
+blck.broadcast_decentralized_learning({"kwargs": "booga booga"})
 blck.listen_decentralized_learning()
