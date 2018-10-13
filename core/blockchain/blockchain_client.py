@@ -27,14 +27,11 @@ class BlockchainGateway(object):
     # TODO: enum-like casting for multiple datatypes, if needed
     # OBJ_TYPES = {str: Client._cast_str, dict: Client._cast_dict}
 
-    # TODO: deal with config
-    # with open("./core/blockchain/blockchain_config.json", "r") as read_file:
-    #     CONFIG = json.load(read_file)
-
     def __init__(self, config_manager, comm_mgr):
         '''
         TODO: Refactor dependencies
         TODO: Figure out core dependency issue
+        TODO: deal with config
         '''
         # TODO: `comm_mgr` is only used in a subset of methods, consider separating
         self.comm_mgr = comm_mgr
@@ -43,10 +40,11 @@ class BlockchainGateway(object):
         config = config_manager.get_config() if config_manager else {}
         self.state = []
         self.host = config.get("BLOCKCHAIN", "host")
-        self.port = config.get("BLOCKCHAIN", "port")
-        self.host = '127.0.0.1'
-        self.ipfs_port = 5001
-        self.port = 3000
+        self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
+        self.port = config.get("BLOCKCHAIN", "http_port")
+        # self.host = '127.0.0.1'
+        # self.ipfs_port = 5001
+        # self.http_port = 3000
         self.client = None
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
@@ -93,7 +91,7 @@ class BlockchainGateway(object):
         '''
         logging.info("Posting to blockchain...")
         on_chain_value = self._upload(value) if value else None
-        tx = {key: on_chain_value} if not bool else {on_chain_value: on_chain_value}
+        tx = {'key': key, 'content': on_chain_value} if not flag else {'key': on_chain_value, 'content': on_chain_value}
         try:
             tx_receipt = requests.post("http://localhost:{0}/txs".format(self.port),
                                         json=tx)
@@ -128,7 +126,7 @@ class BlockchainGateway(object):
         TODO: implement a better way to parse through state list
         TODO: user needs to get from IPFS addresses for now
         '''
-        relevant_txs = [x for x in self.state if (key in x.keys())]
+        relevant_txs = [x for x in self.state if (x['key'] == key)]
         return relevant_txs
 
     def _ipfs_to_content(self, ipfs_hash: str) -> object:
@@ -197,12 +195,13 @@ class BlockchainGateway(object):
     ###                          PROVIDER SECTION                          ###
     ##########################################################################
 
-    # from core.EventTypes import ListenerEventTypes
+    from core.EventTypes import ListenerEventTypes
 
-    # CALLBACKS = {
-    #     ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
-    #     ListenerEventTypes.UNDEFINED.name: do_nothing,
-    # }
+    CALLBACKS = {
+        ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
+        ListenerEventTypes.UNDEFINED.name: do_nothing,
+    }
+
     async def start_listening(self, event_filter, handler, poll_interval=5):
         while True:
             logging.info("start_listening_loop")
@@ -224,6 +223,7 @@ class BlockchainGateway(object):
         finally:
             loop.close()
         return check
+
     def get_diffs(self, oldState: str, newState: str) -> str:
         """
         Iterate through oldState and newState to see any differences
@@ -239,6 +239,7 @@ class BlockchainGateway(object):
         #             self.handle_equals(txn)
         #         elif key != txn.get(key,None) and txn.get(key,None) is not None:
         #             self.handle_diff(txn)
+
     def get_state_diffs(self, event_filter):
         """
         Gets state, then finds diffs, then sets state of blockchain.
