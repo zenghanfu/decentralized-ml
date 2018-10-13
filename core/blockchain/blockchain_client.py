@@ -8,6 +8,8 @@ import time
 
 import ipfsapi
 
+from core.utils.event_types import ListenerEventTypes
+
 # from core.configuration import ConfigurationManager
 
 # TODO: Fix logging for this file
@@ -42,23 +44,28 @@ class BlockchainGateway(object):
         self.host = config.get("BLOCKCHAIN", "host")
         self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
         self.port = config.get("BLOCKCHAIN", "http_port")
-        # self.host = '127.0.0.1'
-        # self.ipfs_port = 5001
-        # self.http_port = 3000
+        self.host = '127.0.0.1'
+        self.ipfs_port = 5001
+        self.port = 3000
         self.client = None
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
-        from core.EventTypes import ListenerEventTypes
 
         self.CALLBACKS = {
-            ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
-            ListenerEventTypes.UNDEFINED.name: do_nothing,
+            ListenerEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
+            ListenerEventTypes.NOTHING.name: self._do_nothing,
         }
     ##########################################################################
     ###                            API SECTION                             ###
     ##########################################################################
+
+    def _do_nothing(self, payload):
+        """
+        Do nothing.
+        """
+        pass
 
     def get_global_state(self):
         """
@@ -141,7 +148,8 @@ class BlockchainGateway(object):
         """
         Helper function to retrieve a Python object from an IPFS hash
         """
-        return self.client.get(ipfs_hash)
+        logging.info("ipfs hash: {}".format(ipfs_hash))
+        return self.client.get_json(ipfs_hash)
 
     def _content_to_ipfs(self, obj: object) -> str:
         """
@@ -241,10 +249,10 @@ class BlockchainGateway(object):
         The parameters (model weights, model config) will be downloaded 
         and put into the optimizer initially. So the optimizer knows this info.
         """
-        logging.info("Handling decentralized learning...")
-        key = tx.get('key')
-        value = tx.get('content')
-        args = {'key': key, 'content': self.getter(value)}
+        logging.info("handling decentralized learning...{}".format(txn))
+        key = txn.get('key')
+        value = txn.get('content')
+        args = {'key': key, 'content': self._ipfs_to_content(value)}
         self.comm_mgr.inform("new_session", args)
 
     def handle_new_weights(self, key: str, value: str):
@@ -332,5 +340,10 @@ class BlockchainGateway(object):
         everything from there on.
         """
         logging.info("payload:{}".format(payload))
+<<<<<<< HEAD
         callback = self.CALLBACKS.get(event_type, ListenerEventTypes.UNDEFINED.value)
+=======
+        # pass
+        callback = self.CALLBACKS.get(event_type, ListenerEventTypes.NOTHING.value)
+>>>>>>> 862b102910ba9f89bc17e959956610795fc714f4
         callback(payload)
