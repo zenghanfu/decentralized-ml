@@ -18,8 +18,11 @@ class FederatedAveragingOptimizer(Machine):
 		self.listen_bound = kwargs.get('listen_bound', 1)
 		self.total_bound = kwargs.get('total_bound', 2)
 		self.training_history = []
-		states = ['splitting', 'training', 'communicating', 'averaging', 'terminate']
-		transitions = [
+		states = kwargs.get('states',
+				['splitting', 'training', 'communicating', 'averaging', 'terminate'])
+		transitions = kwargs.get('transitions',
+			[
+			{'train_iter', 'training', None, after='increment_train_iter'},
 			# ['failure', ['splitting', 'training', 'communicating', 'averaging'], '=', after='raise_exception'],
 			# ['train_iter', 'training', None, after='increment_train_iter'],
 			['done_training', 'training', 'communicating'],
@@ -27,7 +30,7 @@ class FederatedAveragingOptimizer(Machine):
 			['done_listening', 'communicating', 'averaging'],
 			['done_averaging', 'averaging', 'training'],
 			['done_splitting', 'splitting', 'training'],
-			['done_everything', '*', 'terminate']]
+			['done_everything', '*', 'terminate']])
 		# Initialize the state machine
 		Machine.__init__(self, 
 							   states=states, 
