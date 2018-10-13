@@ -31,7 +31,7 @@ class BlockchainGateway(object):
     # with open("./core/blockchain/blockchain_config.json", "r") as read_file:
     #     CONFIG = json.load(read_file)
 
-    def __init__(self):
+    def __init__(self, config_manager, comm_mgr):
         '''
         TODO: Refactor dependencies
         TODO: Figure out core dependency issue
@@ -40,10 +40,10 @@ class BlockchainGateway(object):
         self.comm_mgr = comm_mgr
         self.comm_mgr.configure_listener(self)
 
-        # config = config_manager.get_config()
+        config = config_manager.get_config() if config_manager else {}
         self.state = []
-        # self.host = config.get("BLOCKCHAIN", "host")
-        # self.port = config.get("BLOCKCHAIN", "port")
+        self.host = config.get("BLOCKCHAIN", "host")
+        self.port = config.get("BLOCKCHAIN", "port")
         self.host = '127.0.0.1'
         self.ipfs_port = 5001
         self.port = 3000
@@ -56,43 +56,6 @@ class BlockchainGateway(object):
     ##########################################################################
     ###                            API SECTION                             ###
     ##########################################################################
-
-    async def start_listening(self, event_filter, handler, poll_interval=5):
-        while True:
-            filtered_diffs = self.get_state_diffs(event_filter, handler)
-            if filtered_diffs:
-                return filtered_diffs
-            await asyncio.sleep(poll_interval)
-
-    def filter_set(self, event_filter, handler):
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        loop = asyncio.get_event_loop()
-        try:
-            loop.run_until_complete(self.start_listening(
-                event_filter, handler
-            ))
-            inter = loop.run_until_complete(
-                self.start_listening(event_filter, handler))
-            check = handler(inter)
-        finally:
-            loop.close()
-        return check
-
-    def get_state_diffs(self, event_filter):
-        '''
-        Gets state, then finds diffs, then sets state of blockchain.
-        '''
-        new_state = self.get_global_state()
-        state_diffs = self.get_diffs(self.get_local_state(), new_state)
-        filtered_diffs = [self.handler(tx) for tx in state_diffs if event_filter(txn)]
-        return filtered_diffs
-
-    def handler(self, new_tx: dict) -> None:
-        '''
-        Called on new transactions in `update_state`
-        TODO: actually does something
-        '''
-        return new_tx
 
     def get_global_state(self):
         '''
@@ -108,6 +71,7 @@ class BlockchainGateway(object):
                 continue
             if tx_receipt:
                 break
+        logging.info("global state:{}".format(tx_receipt.json()))
         return tx_receipt.json()
 
     def update_state(self, new_state_wrapper: [dict]) -> None:
@@ -121,7 +85,7 @@ class BlockchainGateway(object):
             new_item = self.handler(i)
             self.state.append(new_item)
 
-    def setter(self, key: str, value: object) -> str:
+    def setter(self, key: str, value: object, flag: bool = False) -> str:
         '''
         Provided a key and a JSON/np.array object, upload the object to
         IPFS and then store the hash as the value on the blockchain. The key
@@ -129,7 +93,7 @@ class BlockchainGateway(object):
         '''
         logging.info("Posting to blockchain...")
         on_chain_value = self._upload(value) if value else None
-        tx = {key: on_chain_value}
+        tx = {key: on_chain_value} if not bool else {on_chain_value: on_chain_value}
         try:
             tx_receipt = requests.post("http://localhost:{0}/txs".format(self.port),
                                         json=tx)
@@ -208,7 +172,7 @@ class BlockchainGateway(object):
         Upload a model config and weights to the blockchain
         '''
         header = self.construct_header("", model_config)
-        tx_receipt = self.setter(header, model_config)
+        tx_receipt = self.setter(header, model_config, True)
         return tx_receipt
 
     def broadcast_terminate(self, model_config: object) -> None:
@@ -239,8 +203,53 @@ class BlockchainGateway(object):
     #     ListenerEventTypes.WEIGHTS.name: broadcast_new_weights, 
     #     ListenerEventTypes.UNDEFINED.name: do_nothing,
     # }
+    async def start_listening(self, event_filter, handler, poll_interval=5):
+        while True:
+            logging.info("start_listening_loop")
+            filtered_diffs = self.get_state_diffs(event_filter)
+            if filtered_diffs:
+                return filtered_diffs
+            await asyncio.sleep(poll_interval)
 
-    def handle_decentralized_learning_trainer(self, key: str, value: str):
+    def filter_set(self, event_filter, handler):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        loop = asyncio.get_event_loop()
+        try:
+            # loop.run_until_complete(self.start_listening(
+            #     event_filter, handler
+            # ))
+            filtered_diffs = loop.run_until_complete(
+                self.start_listening(event_filter, handler))
+            check = [handler(diff) for diff in filtered_diffs]
+        finally:
+            loop.close()
+        return check
+    def get_diffs(self, oldState: str, newState: str) -> str:
+        """
+        Iterate through oldState and newState to see any differences
+        Take action based on the differences
+        """
+        txnDiffs = [txn for txn in newState.get('messages') if txn not in oldState]
+        return txnDiffs
+        # for txn in txnDiffs:
+        #     for key in txn.keys():
+        #         if not txn.get(key):
+        #             self.handle_none(txn)
+        #         elif key == txn.get(key, None):
+        #             self.handle_equals(txn)
+        #         elif key != txn.get(key,None) and txn.get(key,None) is not None:
+        #             self.handle_diff(txn)
+    def get_state_diffs(self, event_filter):
+        """
+        Gets state, then finds diffs, then sets state of blockchain.
+        """
+        new_state = self.get_global_state()
+        state_diffs = self.get_diffs(self.state, new_state)
+        filtered_diffs = [txn for txn in state_diffs if event_filter(txn)]
+        logging.info("filtered diffs:{}".format(filtered_diffs))
+        return filtered_diffs
+
+    def handle_decentralized_learning_trainer(self, txn: str):
         '''
         Downloads parameters of decentralized_learning() query and 
         saves them appropriately to in-memory datastore
@@ -249,7 +258,10 @@ class BlockchainGateway(object):
         The parameters (model weights, model config) will be downloaded 
         and put into the optimizer initially. So the optimizer knows this info.
         '''
-        args = self.getter(key, value)
+        logging.info("handling decentralized learning...")
+        key = list(txn.keys())[0]
+        value = txn[list(txn.keys())[0]]
+        args = self.getter(value)
         self.comm_mgr.inform("new_session", args)
 
     def handle_new_weights(self, key: str, value: str):
@@ -274,7 +286,10 @@ class BlockchainGateway(object):
         on the blockchain; listener should look for this, and if the method signature 
         contains its node id, it will trigger a callback
         '''
-        self.filter_set(lambda x: x[0] == x.get(x[0]), self.handle_decentralized_learning)
+        def filter(txn):
+            logging.info("txn:{}".format(txn))
+            return list(txn.keys())[0] == txn.get(list(txn.keys())[0])
+        self.filter_set(filter, self.handle_decentralized_learning_trainer)
 
     def broadcast_new_weights(self, payload: dict):
         '''
@@ -326,6 +341,7 @@ class BlockchainGateway(object):
         and sending the raw payload to the callback function, which will handle
         everything from there on.
         '''
+        logging.info("payload:{}".format(payload))
         pass
         # callback = EVENT_TYPE_CALLBACKS.get(event_type, ListenerEventTypes.UNDEFINED.value)
         # callback(payload)
