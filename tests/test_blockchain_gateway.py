@@ -26,11 +26,9 @@ def blockchain_gateway(config_manager, communication_manager):
     return blockchain_gateway
 
 def test_blockchain_gateway_can_be_initialized(blockchain_gateway):
-    # blockchain_gateway = BlockchainGateway(config_manager, communication_manager)
     assert blockchain_gateway is not None
 
 def test_blockchain_gateway_interface(blockchain_gateway):
-    # blockchain_gateway = BlockchainGateway(config_manager, communication_manager)
     blockchain_gateway.setter('hello', 'world')
     get_val = blockchain_gateway.getter('hello')
     assert get_val == ['world']
@@ -41,10 +39,11 @@ def test_listen_decentralized_learning(blockchain_gateway):
 
 def test_handle_decentralized_learning(blockchain_gateway):
     """To be implemented."""
-    params = {}
-    blockchain_gateway.broadcast_decentralized_learning(params)
-    blockchain_gateway.listen_decentralized_learning()
-    assert 
+    # params = {}
+    # blockchain_gateway.broadcast_decentralized_learning(params)
+    # blockchain_gateway.listen_decentralized_learning()
+    # assert 
+    pass
 
 def test_listen_new_weights(blockchain_gateway):
     """To be implemented."""

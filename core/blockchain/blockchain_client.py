@@ -13,7 +13,7 @@ from core.utils.event_types import ListenerEventTypes
 
 
 logging.basicConfig(level=logging.DEBUG,
-    format='[Blockchain Client] %(message)s')
+    format='[BlockchainGateway] %(message)s')
 
 
 class BlockchainGateway(object):
@@ -37,14 +37,14 @@ class BlockchainGateway(object):
         self.communication_manager = communication_manager
         self.communication_manager.configure_listener(self)
 
-        config = config_manager.get_config() if config_manager else {}
+        config = config_manager.get_config()
         self.state = []
-        self.host = config.get("BLOCKCHAIN", "host")
-        self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
-        self.port = config.get("BLOCKCHAIN", "http_port")
-        # self.host = '127.0.0.1'
-        # self.ipfs_port = 5001
-        # self.port = 3000
+        # self.host = config.get("BLOCKCHAIN", "host")
+        # self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
+        # self.port = config.get("BLOCKCHAIN", "http_port")
+        self.host = '127.0.0.1'
+        self.ipfs_port = 5001
+        self.port = 3000
         self.client = None
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
@@ -80,7 +80,7 @@ class BlockchainGateway(object):
                 if tx_receipt:
                     break
             except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
-                logging.info("HTTP Request error, got: {0}".format(e))
+                logging.info("HTTP GET error, got: {0}".format(e))
                 continue
         logging.info("global state:{}".format(tx_receipt.json()))
         return tx_receipt.json()
@@ -109,6 +109,16 @@ class BlockchainGateway(object):
             self.update_state(new_state)
             return filtered_diffs
 
+    def check_malformed_content(self) -> None:
+        """
+        Checks whether content is of the form
+            `{
+                type: ... ,
+                payload: ...
+            }`
+        """
+        pass
+
     def handler(self, content: dict) -> dict:
         """
         Depending on the `type` of tx passed in, carry out some action on it
@@ -117,7 +127,8 @@ class BlockchainGateway(object):
         and actions for each type
         TODO: may be worthwhile to move `switch` into the `__init__()`
         """
-        switch = {'trivial_type': lambda value: value}
+        switch = {'decentralized_learning': lambda value: value,
+                    'new_weights': lambda value: value}
         tx_type = content.get('type')
         tx_payload = content.get('payload')
         retval = switch.get(tx_type)(tx_payload)
@@ -131,8 +142,8 @@ class BlockchainGateway(object):
         new_state = dict(new_state_wrapper).get('messages')
         len_state = len(self.state)
         for i in new_state[len_state:]:
-            new_item = self.handler(i)
-            self.state.append(new_item)
+            # new_item = self.handler(i)
+            self.state.append(i)
 
     def setter(self, key: str, value: object, flag: bool = False) -> str:
         """
@@ -149,7 +160,7 @@ class BlockchainGateway(object):
                 "http://localhost:{0}/txs".format(self.port), json=tx)
             tx_receipt.raise_for_status()
         except Exception as e:
-            logging.info("HTTP Request error, got: {0}".format(e))
+            logging.info("HTTP POST error, got: {0}".format(e))
         return tx_receipt.text
 
     def getter(self, key: str) -> list:
@@ -157,7 +168,8 @@ class BlockchainGateway(object):
         Next, provided a key, get the IPFS hash
         from the blockchain and download the object from IPFS
         """
-        # logging.info("Getting latest state from blockchain...")
+        logging.info("Getting from blockchain...")
+        self.update_state(self.get_global_state())
         retval = self._download(key)
         return retval
 
@@ -263,7 +275,7 @@ class BlockchainGateway(object):
         The parameters (model weights, model config) will be downloaded 
         and put into the optimizer initially. So the optimizer knows this info.
         """
-        logging.info("handling decentralized learning...{}".format(tx))
+        logging.info("handling decentralized learning... {}".format(tx))
         key = tx.get('key')
         value = tx.get('content')
         args = {'key': key, 'content': self._ipfs_to_content(value)}
@@ -297,7 +309,7 @@ class BlockchainGateway(object):
         def filter(tx):
             logging.info("tx: {}".format(tx))
             return tx.get('key') == tx.get('content')
-        self.filter_set(filter, self.handle_decentralized_learning_trainer)
+        return self.filter_set(filter, self.handle_decentralized_learning_trainer)
 
     def broadcast_new_weights(self, payload: dict):
         """
