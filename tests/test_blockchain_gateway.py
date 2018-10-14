@@ -43,10 +43,6 @@ def test_blockchain_gateway_can_inform_the_communication_manager(config_manager,
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_can_parse_events_correctly(config_manager, communication_manager):
-    """To be implemented."""
-    pass
-
 def test_blockchain_gateway_terminates_training(config_manager, communication_manager):
     """To be implemented."""
     pass
