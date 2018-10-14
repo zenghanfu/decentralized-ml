@@ -35,22 +35,29 @@ def test_blockchain_gateway_interface(blockchain_gateway):
     get_val = blockchain_gateway.getter('hello')
     assert get_val == ['world']
 
-def test_blockchain_gateway_can_schedule_training(blockchain_gateway):
+def test_listen_decentralized_learning(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_can_pick_up_training(blockchain_gateway):
+def test_handle_decentralized_learning(blockchain_gateway):
+    """To be implemented."""
+    params = {}
+    blockchain_gateway.broadcast_decentralized_learning(params)
+    blockchain_gateway.listen_decentralized_learning()
+    assert 
+
+def test_listen_new_weights(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_can_inform_the_communication_manager(blockchain_gateway):
+def test_handle_new_weights(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_terminates_training(blockchain_gateway):
+def test_listen_terminate(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_picks_up_termination(blockchain_gateway):
+def test_handle_terminate(blockchain_gateway):
     """To be implemented."""
     pass

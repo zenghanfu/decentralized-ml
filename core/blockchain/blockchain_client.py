@@ -71,6 +71,7 @@ class BlockchainGateway(object):
         Gets the global state which should be a list of dictionaries
         """
         timeout = time.time() + 5
+        tx_receipt = None
         while time.time() < timeout:
             try:
                 tx_receipt = requests.get(
@@ -98,14 +99,15 @@ class BlockchainGateway(object):
         Gets state, then finds diffs, then sets state of blockchain.
         """
         new_state = self.get_global_state()
-        state_diffs = self.get_diffs(self.state, new_state)
-        filtered_diffs = [tx for tx in state_diffs if event_filter(tx)]
-        logging.info("filtered diffs:{}".format(filtered_diffs))
-        # Comment out below line for testing else you'll have to actually push
-        # txns to test which is pretty annoying. Without below line, this class
-        # does not update its own state!!!
-        # self.update_state(new_state)
-        return filtered_diffs
+        if new_state:
+            state_diffs = self.get_diffs(self.state, new_state)
+            filtered_diffs = [tx for tx in state_diffs if event_filter(tx)]
+            logging.info("filtered diffs:{}".format(filtered_diffs))
+            # Comment out below line for testing else you'll have to actually push
+            # txns to test which is pretty annoying. Without below line, this class
+            # does not update its own state!!!
+            self.update_state(new_state)
+            return filtered_diffs
 
     def handler(self, content: dict) -> dict:
         """
