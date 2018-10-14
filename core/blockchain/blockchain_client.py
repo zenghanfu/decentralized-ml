@@ -22,8 +22,9 @@ class BlockchainGateway(object):
     with the blockchain.
 
     In order for this to work, the following must be running:
-        IPFS Daemon: `ipfs deamon`
-        The lotion app: `node app.js` from the application root directory
+        IPFS Daemon: `ipfs daemon`
+        The lotion app: `node app_trivial.js` from the application root directory
+    T
     """
 
     def __init__(self, config_manager, communication_manager):
@@ -67,7 +68,7 @@ class BlockchainGateway(object):
 
     def get_global_state(self):
         """
-        Gets the global state with should be a list of dictionaries
+        Gets the global state which should be a list of dictionaries
         """
         timeout = time.time() + 5
         while time.time() < timeout:
@@ -139,8 +140,8 @@ class BlockchainGateway(object):
         """
         logging.info("Posting to blockchain...")
         on_chain_value = self._upload(value) if value else None
-        tx = {'key': key, 'content': on_chain_value} if (
-            not flag) else {'key': on_chain_value, 'content': on_chain_value}
+        key = on_chain_value if flag else key
+        tx = {'key': key, 'content': on_chain_value}
         try:
             tx_receipt = requests.post(
                 "http://localhost:{0}/txs".format(self.port), json=tx)
@@ -151,10 +152,10 @@ class BlockchainGateway(object):
 
     def getter(self, key: str) -> list:
         """
-        First, get the latest state. Next, provided a key, get the IPFS hash
+        Next, provided a key, get the IPFS hash
         from the blockchain and download the object from IPFS
         """
-        logging.info("Getting latest state from blockchain...")
+        # logging.info("Getting latest state from blockchain...")
         retval = self._download(key)
         return retval
 
@@ -255,8 +256,6 @@ class BlockchainGateway(object):
 
     def handle_decentralized_learning_trainer(self, tx: dict) -> None:
         """
-        Downloads parameters of decentralized_learning() query and 
-        saves them appropriately to in-memory datastore
         This callback will be triggered by the Listener if it finds the 
         method signature it's looking for.
         The parameters (model weights, model config) will be downloaded 
@@ -276,9 +275,12 @@ class BlockchainGateway(object):
         comm. mgr which gives them to the relevant optimizer 
         -which should do the moving average.
         """
-        weights = self.getter(key, value)
-        # TODO: Put into in-memory datastore.
-        self.communication_manager.inform("new_weights", weights)
+        key = tx.get('key')
+        value = tx.get('content')
+        args = {'key': key, 'content': self._ipfs_to_content(value)}
+        # weights = self.getter(key, value)
+        # TODO: Put into in-memory datastore.   
+        self.communication_manager.inform("new_weights", args)
 
     def handle_terminate(self):
         self.communication_manager.inform("TERMINATE", None)

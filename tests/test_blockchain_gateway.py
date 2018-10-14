@@ -20,33 +20,37 @@ def communication_manager(config_manager):
     communication_manager = CommunicationManager(config_manager=config_manager)
     return communication_manager
 
-
-def test_blockchain_gateway_can_be_initialized(config_manager, communication_manager):
+@pytest.fixture
+def blockchain_gateway(config_manager, communication_manager):
     blockchain_gateway = BlockchainGateway(config_manager, communication_manager)
+    return blockchain_gateway
+
+def test_blockchain_gateway_can_be_initialized(blockchain_gateway):
+    # blockchain_gateway = BlockchainGateway(config_manager, communication_manager)
     assert blockchain_gateway is not None
 
-def test_blockchain_gateway_interface(config_manager, communication_manager):
-    blockchain_gateway = BlockchainGateway(config_manager, communication_manager)
+def test_blockchain_gateway_interface(blockchain_gateway):
+    # blockchain_gateway = BlockchainGateway(config_manager, communication_manager)
     blockchain_gateway.setter('hello', 'world')
     get_val = blockchain_gateway.getter('hello')
     assert get_val == ['world']
 
-def test_blockchain_gateway_can_schedule_training(config_manager, communication_manager):
+def test_blockchain_gateway_can_schedule_training(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_can_pick_up_training(config_manager, communication_manager):
+def test_blockchain_gateway_can_pick_up_training(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_can_inform_the_communication_manager(config_manager, communication_manager):
+def test_blockchain_gateway_can_inform_the_communication_manager(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_terminates_training(config_manager, communication_manager):
+def test_blockchain_gateway_terminates_training(blockchain_gateway):
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_picks_up_termination(config_manager, communication_manager):
+def test_blockchain_gateway_picks_up_termination(blockchain_gateway):
     """To be implemented."""
     pass
