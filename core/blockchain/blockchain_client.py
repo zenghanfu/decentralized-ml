@@ -74,11 +74,11 @@ class BlockchainGateway(object):
             try:
                 tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
                 tx_receipt.raise_for_status()
+                if tx_receipt:
+                    break
             except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
                 logging.info("HTTP Request error, got: {0}".format(e))
                 continue
-            if tx_receipt:
-                break
         logging.info("global state:{}".format(tx_receipt.json()))
         return tx_receipt.json()
 
