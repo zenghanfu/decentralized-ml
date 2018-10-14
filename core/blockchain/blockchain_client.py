@@ -29,7 +29,6 @@ class BlockchainGateway(object):
     def __init__(self, config_manager, communication_manager):
         """
         TODO: Refactor dependencies
-        TODO: Figure out core dependency issue
         TODO: deal with config
         """
         # TODO: `communication_manager` is only used in a subset of methods,
@@ -113,6 +112,7 @@ class BlockchainGateway(object):
         before returning it
         TODO: handler is trivial for now, just returns payload. Flesh out types
         and actions for each type
+        TODO: may be worthwhile to move `switch` into the `__init__()`
         """
         switch = {'trivial_type': lambda value: value}
         tx_type = content.get('type')
@@ -171,7 +171,6 @@ class BlockchainGateway(object):
         Provided an on-chain key, retrieve the value from local state and
         retrieve the Python object from IPFS
         TODO: implement a better way to parse through state list
-        TODO: user needs to get from IPFS addresses for now
         """
         relevant_txs = [self._ipfs_to_content(tx.get('content'))
                             for tx in self.state if (tx.get('key') == key)]
