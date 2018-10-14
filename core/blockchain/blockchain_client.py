@@ -32,7 +32,8 @@ class BlockchainGateway(object):
         TODO: Figure out core dependency issue
         TODO: deal with config
         """
-        # TODO: `communication_manager` is only used in a subset of methods, consider separating
+        # TODO: `communication_manager` is only used in a subset of methods,
+        # consider separating
         self.communication_manager = communication_manager
         self.communication_manager.configure_listener(self)
 
@@ -72,7 +73,8 @@ class BlockchainGateway(object):
         timeout = time.time() + 5
         while time.time() < timeout:
             try:
-                tx_receipt = requests.get("http://localhost:{0}/state".format(self.port))
+                tx_receipt = requests.get(
+                    "http://localhost:{0}/state".format(self.port))
                 tx_receipt.raise_for_status()
                 if tx_receipt:
                     break
@@ -83,12 +85,13 @@ class BlockchainGateway(object):
         return tx_receipt.json()
 
     def get_diffs(self, old_state: list, new_state: dict) -> list:
-            """
-            Iterate through oldState and newState to see any differences
-            Take action based on the differences
-            """
-            tx_diffs = [tx for tx in new_state.get('messages') if tx not in old_state]
-            return tx_diffs
+        """
+        Iterate through oldState and newState to see any differences
+        Take action based on the differences
+        """
+        tx_diffs = [tx for tx in new_state.get('messages') if (
+                        tx not in old_state)]
+        return tx_diffs
 
     def get_state_diffs(self, event_filter: object) -> list:
         """
@@ -98,8 +101,8 @@ class BlockchainGateway(object):
         state_diffs = self.get_diffs(self.state, new_state)
         filtered_diffs = [tx for tx in state_diffs if event_filter(tx)]
         logging.info("filtered diffs:{}".format(filtered_diffs))
-        # Comment out below line for testing else you'll have to actually push txns
-        # to test which is pretty annoying. Without below line, this class
+        # Comment out below line for testing else you'll have to actually push
+        # txns to test which is pretty annoying. Without below line, this class
         # does not update its own state!!!
         # self.update_state(new_state)
         return filtered_diffs
@@ -136,10 +139,11 @@ class BlockchainGateway(object):
         """
         logging.info("Posting to blockchain...")
         on_chain_value = self._upload(value) if value else None
-        tx = {'key': key, 'content': on_chain_value} if not flag else {'key': on_chain_value, 'content': on_chain_value}
+        tx = {'key': key, 'content': on_chain_value} if (
+            not flag) else {'key': on_chain_value, 'content': on_chain_value}
         try:
-            tx_receipt = requests.post("http://localhost:{0}/txs".format(self.port),
-                                        json=tx)
+            tx_receipt = requests.post(
+                "http://localhost:{0}/txs".format(self.port), json=tx)
             tx_receipt.raise_for_status()
         except Exception as e:
             logging.info("HTTP Request error, got: {0}".format(e))
@@ -211,7 +215,7 @@ class BlockchainGateway(object):
     def handle_decentralized_learning_owner(self, model_config: object) -> None:
         """
         Return weights after training terminates
-        TODO: add condition to check if training for specific model has terminated
+        TODO: add condition to check if training for specific model terminated
         """
         final_weights = self.getter(header)
         return final_weights
@@ -223,9 +227,10 @@ class BlockchainGateway(object):
     async def start_listening(self, event_filter, handler, poll_interval=5):
         """
         Starts an indefinite loop that listens for a specific event to occur.
-        Called in `filter_set`. Filters are some condition that must be fulfilled
-        on a per tx basis
-        `poll_interval` specifies the number of seconds to stall before each poll
+        Called in `filter_set`. Filters are some condition that must be
+        fulfilled on a per tx basis
+        `poll_interval` specifies the number of seconds to stall before each
+        poll
         """
         while True:
             logging.info("start_listening_loop")
@@ -281,10 +286,10 @@ class BlockchainGateway(object):
 
     def listen_decentralized_learning(self):
         """
-        Polls blockchain for node ID in decentralized_learning() method signature
-        decentralized_learning(...<node_ids>...) method signature will be the key 
-        on the blockchain; listener should look for this, and if the method signature 
-        contains its node id, it will trigger a callback
+        Polls blockchain for node ID in decentralized_learning() method
+        signature decentralized_learning(...<node_ids>...) method signature will
+        be the key on the blockchain; listener should look for this, and if the
+        method signature contains its node id, it will trigger a callback
         """
         def filter(tx):
             logging.info("tx: {}".format(tx))
@@ -294,7 +299,7 @@ class BlockchainGateway(object):
     def broadcast_new_weights(self, payload: dict):
         """
         broadcast_new_weights() method with all relevant parameters
-        should populate the key of new_weights with all of the nodes for which 
+        should populate the key of new_weights with all of the nodes for which
         these new weights are relevant. value should be IPFS hash.
         """
         key = payload.get("key", None)
@@ -305,9 +310,9 @@ class BlockchainGateway(object):
     def listen_new_weights(self):
         """
         Polls blockchain for node ID in new_weights() method signature
-        new_weights(...<node_ids>...) method signature will be the key on the blockchain; 
-        listener should look for this, and if the method signature contains its node id, 
-        it will trigger a callback
+        new_weights(...<node_ids>...) method signature will be the key on the
+        blockchain; listener should look for this, and if the method signature
+        contains its node id, it will trigger a callback
         """
         def filter(tx):
             logging.info("tx: {}".format(tx))
@@ -348,5 +353,6 @@ class BlockchainGateway(object):
         everything from there on.
         """
         logging.info("payload:{}".format(payload))
-        callback = self.CALLBACKS.get(event_type, ListenerEventTypes.NOTHING.value)
+        callback = self.CALLBACKS.get(event_type,
+                                        ListenerEventTypes.NOTHING.value)
         callback(payload)
