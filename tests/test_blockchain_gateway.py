@@ -39,7 +39,7 @@ def test_blockchain_gateway_can_pick_up_training(config_manager, communication_m
     """To be implemented."""
     pass
 
-def test_blockchain_gateway_can_inform_the_optimizer(config_manager, communication_manager):
+def test_blockchain_gateway_can_inform_the_communication_manager(config_manager, communication_manager):
     """To be implemented."""
     pass
 
