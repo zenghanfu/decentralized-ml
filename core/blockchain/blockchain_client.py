@@ -8,11 +8,10 @@ import time
 
 import ipfsapi
 
+from core.configuration import ConfigurationManager
 from core.utils.event_types import ListenerEventTypes
 
-# from core.configuration import ConfigurationManager
 
-# TODO: Fix logging for this file
 logging.basicConfig(level=logging.DEBUG,
     format='[Blockchain Client] %(message)s')
 
@@ -26,27 +25,25 @@ class BlockchainGateway(object):
         IPFS Daemon: `ipfs deamon`
         The lotion app: `node app.js` from the application root directory
     """
-    # TODO: enum-like casting for multiple datatypes, if needed
-    # OBJ_TYPES = {str: Client._cast_str, dict: Client._cast_dict}
 
-    def __init__(self, config_manager, comm_mgr):
+    def __init__(self, config_manager, communication_manager):
         """
         TODO: Refactor dependencies
         TODO: Figure out core dependency issue
         TODO: deal with config
         """
-        # TODO: `comm_mgr` is only used in a subset of methods, consider separating
-        self.comm_mgr = comm_mgr
-        self.comm_mgr.configure_listener(self)
+        # TODO: `communication_manager` is only used in a subset of methods, consider separating
+        self.communication_manager = communication_manager
+        self.communication_manager.configure_listener(self)
 
         config = config_manager.get_config() if config_manager else {}
         self.state = []
         self.host = config.get("BLOCKCHAIN", "host")
         self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
         self.port = config.get("BLOCKCHAIN", "http_port")
-        self.host = '127.0.0.1'
-        self.ipfs_port = 5001
-        self.port = 3000
+        # self.host = '127.0.0.1'
+        # self.ipfs_port = 5001
+        # self.port = 3000
         self.client = None
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
@@ -57,11 +54,12 @@ class BlockchainGateway(object):
             ListenerEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
             ListenerEventTypes.NOTHING.name: self._do_nothing,
         }
+
     ##########################################################################
     ###                            API SECTION                             ###
     ##########################################################################
 
-    def _do_nothing(self, payload):
+    def _do_nothing(self, payload: dict):
         """
         Do nothing.
         """
@@ -84,16 +82,47 @@ class BlockchainGateway(object):
         logging.info("global state:{}".format(tx_receipt.json()))
         return tx_receipt.json()
 
-    def handler(self):
-        pass
+    def get_diffs(self, old_state: list, new_state: dict) -> list:
+            """
+            Iterate through oldState and newState to see any differences
+            Take action based on the differences
+            """
+            tx_diffs = [tx for tx in new_state.get('messages') if tx not in old_state]
+            return tx_diffs
 
-    def update_state(self, new_state_wrapper: [dict]) -> None:
+    def get_state_diffs(self, event_filter: object) -> list:
+        """
+        Gets state, then finds diffs, then sets state of blockchain.
+        """
+        new_state = self.get_global_state()
+        state_diffs = self.get_diffs(self.state, new_state)
+        filtered_diffs = [tx for tx in state_diffs if event_filter(tx)]
+        logging.info("filtered diffs:{}".format(filtered_diffs))
+        # Comment out below line for testing else you'll have to actually push txns
+        # to test which is pretty annoying. Without below line, this class
+        # does not update its own state!!!
+        # self.update_state(new_state)
+        return filtered_diffs
+
+    def handler(self, content: dict) -> dict:
+        """
+        Depending on the `type` of tx passed in, carry out some action on it
+        before returning it
+        TODO: handler is trivial for now, just returns payload. Flesh out types
+        and actions for each type
+        """
+        switch = {'trivial_type': lambda value: value}
+        tx_type = content.get('type')
+        tx_payload = content.get('payload')
+        retval = switch.get(tx_type)(tx_payload)
+        return retval
+
+    def update_state(self, new_state_wrapper: list) -> None:
         """
         Given the freshly-downloaded state, call a handler on each transaction
         that was not already present in our own state
         """
-        # TODO: Set self.handler, else this method errors
-        new_state = dict(new_state_wrapper)['messages']
+        new_state = dict(new_state_wrapper).get('messages')
         len_state = len(self.state)
         for i in new_state[len_state:]:
             new_item = self.handler(i)
@@ -116,7 +145,7 @@ class BlockchainGateway(object):
             logging.info("HTTP Request error, got: {0}".format(e))
         return tx_receipt.text
 
-    def getter(self, key: str) -> object:
+    def getter(self, key: str) -> list:
         """
         First, get the latest state. Next, provided a key, get the IPFS hash
         from the blockchain and download the object from IPFS
@@ -140,23 +169,25 @@ class BlockchainGateway(object):
         TODO: implement a better way to parse through state list
         TODO: user needs to get from IPFS addresses for now
         """
-        relevant_txs = [self._ipfs_to_content(tx['content'])
-                            for tx in self.state if (tx['key'] == key)]
+        relevant_txs = [self._ipfs_to_content(tx.get('content'))
+                            for tx in self.state if (tx.get('key') == key)]
         return relevant_txs
 
     def _ipfs_to_content(self, ipfs_hash: str) -> object:
         """
         Helper function to retrieve a Python object from an IPFS hash
         """
-        logging.info("ipfs hash: {}".format(ipfs_hash))
+        logging.info("Grabbing IPFS hash: {}".format(ipfs_hash))
         return self.client.get_json(ipfs_hash)
 
-    def _content_to_ipfs(self, obj: object) -> str:
+    def _content_to_ipfs(self, content: dict) -> str:
         """
         Helper function to deploy a Python object onto IPFS, 
         returns an IPFS hash
         """
-        return self.client.add_json(obj)
+        ipfs_hash = self.client.add_json(content)
+        logging.info("Sending IPFS hash: {}".format(ipfs_hash))
+        return ipfs_hash
 
     ##########################################################################
     ###                         DEVELOPER SECTION                          ###
@@ -218,28 +249,6 @@ class BlockchainGateway(object):
             loop.close()
         return check
 
-    def get_diffs(self, oldState: str, newState: str) -> str:
-        """
-        Iterate through oldState and newState to see any differences
-        Take action based on the differences
-        """
-        txnDiffs = [txn for txn in newState.get('messages') if txn not in oldState]
-        return txnDiffs
-
-    def get_state_diffs(self, event_filter):
-        """
-        Gets state, then finds diffs, then sets state of blockchain.
-        """
-        new_state = self.get_global_state()
-        state_diffs = self.get_diffs(self.state, new_state)
-        filtered_diffs = [txn for txn in state_diffs if event_filter(txn)]
-        logging.info("filtered diffs:{}".format(filtered_diffs))
-        # Comment out below line for testing else you'll have to actually push txns
-        # to test which is pretty annoying. Without below line, this class
-        # does not update its own state!!!
-        # self.update_state(new_state)
-        return filtered_diffs
-
     def handle_decentralized_learning_trainer(self, tx: dict) -> None:
         """
         Downloads parameters of decentralized_learning() query and 
@@ -249,11 +258,11 @@ class BlockchainGateway(object):
         The parameters (model weights, model config) will be downloaded 
         and put into the optimizer initially. So the optimizer knows this info.
         """
-        logging.info("handling decentralized learning...{}".format(txn))
-        key = txn.get('key')
-        value = txn.get('content')
+        logging.info("handling decentralized learning...{}".format(tx))
+        key = tx.get('key')
+        value = tx.get('content')
         args = {'key': key, 'content': self._ipfs_to_content(value)}
-        self.comm_mgr.inform("new_session", args)
+        self.communication_manager.inform("new_session", args)
 
     def handle_new_weights(self, key: str, value: str):
         """
@@ -265,10 +274,10 @@ class BlockchainGateway(object):
         """
         weights = self.getter(key, value)
         # TODO: Put into in-memory datastore.
-        self.comm_mgr.inform("new_weights", weights)
+        self.communication_manager.inform("new_weights", weights)
 
     def handle_terminate(self):
-        self.comm_mgr.inform("TERMINATE", None)
+        self.communication_manager.inform("TERMINATE", None)
 
     def listen_decentralized_learning(self):
         """
@@ -277,10 +286,9 @@ class BlockchainGateway(object):
         on the blockchain; listener should look for this, and if the method signature 
         contains its node id, it will trigger a callback
         """
-        def filter(txn):
-            logging.info("txn: {}".format(txn))
-            return txn.get('key') == txn.get('content')
-            # return list(txn.keys())[0] == txn.get(list(txn.keys())[0])
+        def filter(tx):
+            logging.info("tx: {}".format(tx))
+            return tx.get('key') == tx.get('content')
         self.filter_set(filter, self.handle_decentralized_learning_trainer)
 
     def broadcast_new_weights(self, payload: dict):
@@ -301,18 +309,18 @@ class BlockchainGateway(object):
         listener should look for this, and if the method signature contains its node id, 
         it will trigger a callback
         """
-        def filter(txn):
-            logging.info("txn: {}".format(txn))
-            return txn.get('key') != txn.get('content')
+        def filter(tx):
+            logging.info("tx: {}".format(tx))
+            return tx.get('key') != tx.get('content')
         self.filter_set(lambda x: x[0] != x.get(x[0]), self.handle_new_weights)
 
     def listen_terminate(self):
         """
         Polls blockchain to see whether to terminate
         """
-        def filter(txn):
-            logging.info("txn: {}".format(txn))
-            return txn.get('content') is None
+        def filter(tx):
+            logging.info("tx: {}".format(tx))
+            return tx.get('content') is None
         self.filter_set(filter, self.handle_terminate)
 
     def inform(self, event_type, payload):
