@@ -129,7 +129,7 @@ class BlockchainGateway(object):
         IPFS and then store the hash as the value on the blockchain. The key
         should be a backward reference to a prior tx
         """
-        logging.info("Posting to blockchain...")
+        # logging.info("Posting to blockchain...")
         on_chain_value = self._upload(value) if value else None
         key = on_chain_value if flag else key
         tx = {'key': key, 'content': on_chain_value}
@@ -173,7 +173,7 @@ class BlockchainGateway(object):
         """
         Helper function to retrieve a Python object from an IPFS hash
         """
-        logging.info("Grabbing IPFS hash: {}".format(ipfs_hash))
+        # logging.info("Grabbing IPFS hash: {}".format(ipfs_hash))
         return self.client.get_json(ipfs_hash)
 
     def _content_to_ipfs(self, content: dict) -> str:
@@ -182,7 +182,7 @@ class BlockchainGateway(object):
         returns an IPFS hash
         """
         ipfs_hash = self.client.add_json(content)
-        logging.info("Sending IPFS hash: {}".format(ipfs_hash))
+        # logging.info("Sending IPFS hash: {}".format(ipfs_hash))
         return ipfs_hash
 
     ##########################################################################
@@ -225,7 +225,7 @@ class BlockchainGateway(object):
         poll
         """
         while True:
-            logging.info("start_listening_loop")
+            # logging.info("start_listening_loop")
             filtered_diffs = self.get_state_diffs(event_filter)
             if filtered_diffs:
                 return filtered_diffs
@@ -260,7 +260,7 @@ class BlockchainGateway(object):
         self.communication_manager.inform("new_session", args)
         self.listen_new_weights()
 
-    def handle_new_weights(self, key: str, value: str):
+    def handle_new_weights(self, tx: dict):
         """
         handle_new_weights() method downloads weights and does something with
         it. This callback is triggered by the Listener when it sees new weights 
@@ -268,6 +268,7 @@ class BlockchainGateway(object):
         comm. mgr which gives them to the relevant optimizer 
         -which should do the moving average.
         """
+        logging.info("handling new weights...{}".format(tx))
         key = tx.get('key')
         value = tx.get('content')
         args = {'key': key, 'content': self._ipfs_to_content(value)}
@@ -299,8 +300,8 @@ class BlockchainGateway(object):
         these new weights are relevant. value should be IPFS hash.
         """
         content = tx.get('content', None)
-        key = self.client.add_json(content)
-        tx_receipt = self.setter(key, weights)
+        key = self.client.add_json(content['weights'])
+        tx_receipt = self.setter(key, content['gradient'])
         return tx_receipt
 
     def listen_new_weights(self):
@@ -310,10 +311,11 @@ class BlockchainGateway(object):
         blockchain; listener should look for this, and if the method signature
         contains its node id, it will trigger a callback
         """
-        def filter(tx):
-            logging.info("tx: {}".format(tx))
+        logging.info("I'm listening for new weights!")
+        def weights_filter(tx):
+            logging.info("filtering for new weights: {}".format(tx))
             return tx.get('key') != tx.get('content')
-        self.filter_set(lambda x: x[0] != x.get(x[0]), self.handle_new_weights)
+        self.filter_set(weights_filter, self.handle_new_weights)
 
     def listen_terminate(self):
         """

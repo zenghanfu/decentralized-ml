@@ -69,7 +69,7 @@ class CommunicationManager(object):
         optimizer_params = payload.get('content')
         self.optimizer = FederatedAveragingOptimizer(optimizer_params)
         actionable_event = self.optimizer.kickoff()
-        self._parse_and_run_callback(actionable_event)
+        # self._parse_and_run_callback(actionable_event)
     
     def deserialize_job(self, payload):
         return payload
@@ -120,8 +120,8 @@ class CommunicationManager(object):
             "payload": payload
         }
         if self.optimizer:
-            logging.info("optimizer available; asking optimizer")
             actionable_event = self.optimizer.ask(event)
+            logging.info("optimizer available; asking optimizer:{}".format(actionable_event))
             self._parse_and_run_callback(actionable_event)
         else:
             logging.info("no optimizer available. this should be a create session")
