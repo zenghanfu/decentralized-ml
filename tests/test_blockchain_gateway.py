@@ -15,20 +15,23 @@ def config_manager():
     )
     return config_manager
 
-# @pytest.fixture
-# def communication_manager(config_manager):
-#     communication_manager = CommunicationManager(config_manager=config_manager)
-#     return communication_manager
+@pytest.fixture
+def communication_manager(config_manager):
+    # NOTE: We will fill this out when the PR for the Comm. Mgr. is done.
+    # communication_manager = CommunicationManager(config_manager)
+    # return communication_manager
+    return None
 
 @pytest.fixture
 def blockchain_gateway(config_manager, communication_manager):
     blockchain_gateway = BlockchainGateway(config_manager, communication_manager)
     return blockchain_gateway
 
+
 def test_blockchain_gateway_can_be_initialized(blockchain_gateway):
     assert blockchain_gateway is not None
 
-def test_blockchain_gateway_interface(blockchain_gateway):
+def test_blockchain_gateway_public_interface_works(blockchain_gateway):
     blockchain_gateway.setter('hello', 'world')
     get_val = blockchain_gateway.getter('hello')
     assert get_val == ['world']
@@ -39,10 +42,6 @@ def test_listen_decentralized_learning(blockchain_gateway):
 
 def test_handle_decentralized_learning(blockchain_gateway):
     """To be implemented."""
-    # params = {}
-    # blockchain_gateway.broadcast_decentralized_learning(params)
-    # blockchain_gateway.listen_decentralized_learning()
-    # assert 
     pass
 
 def test_listen_new_weights(blockchain_gateway):

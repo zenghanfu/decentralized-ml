@@ -9,7 +9,7 @@ import time
 import ipfsapi
 
 from core.configuration import ConfigurationManager
-from core.utils.event_types import ListenerEventTypes
+from core.utils.event_types import MessageEventTypes
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -18,13 +18,15 @@ logging.basicConfig(level=logging.DEBUG,
 
 class BlockchainGateway(object):
     """
+    Blockchain Gateway 
+
     The blockchain client exposes `setter` and `getter` in order to interact
     with the blockchain.
 
     In order for this to work, the following must be running:
         IPFS Daemon: `ipfs daemon`
         The lotion app: `node app_trivial.js` from the application root directory
-    T
+
     """
 
     def __init__(self, config_manager, communication_manager):
@@ -49,8 +51,8 @@ class BlockchainGateway(object):
             logging.info("IPFS daemon not started, got: {0}".format(e))
 
         self.CALLBACKS = {
-            ListenerEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
-            ListenerEventTypes.NOTHING.name: self._do_nothing,
+            MessageEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
+            MessageEventTypes.NOTHING.name: self._do_nothing,
         }
 
     ##########################################################################
@@ -348,5 +350,5 @@ class BlockchainGateway(object):
         """
         logging.info("payload:{}".format(payload))
         callback = self.CALLBACKS.get(event_type,
-                                        ListenerEventTypes.NOTHING.value)
+                                        MessageEventTypes.NOTHING.value)
         callback(payload)
