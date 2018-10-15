@@ -103,9 +103,6 @@ class BlockchainGateway(object):
             state_diffs = self.get_diffs(self.state, new_state)
             filtered_diffs = [tx for tx in state_diffs if event_filter(tx)]
             logging.info("filtered diffs:{}".format(filtered_diffs))
-            # Comment out below line for testing else you'll have to actually push
-            # txns to test which is pretty annoying. Without below line, this class
-            # does not update its own state!!!
             self.update_state(new_state)
             return filtered_diffs
 
@@ -119,21 +116,6 @@ class BlockchainGateway(object):
         """
         pass
 
-    def handler(self, content: dict) -> dict:
-        """
-        Depending on the `type` of tx passed in, carry out some action on it
-        before returning it
-        TODO: handler is trivial for now, just returns payload. Flesh out types
-        and actions for each type
-        TODO: may be worthwhile to move `switch` into the `__init__()`
-        """
-        switch = {'decentralized_learning': lambda value: value,
-                    'new_weights': lambda value: value}
-        tx_type = content.get('type')
-        tx_payload = content.get('payload')
-        retval = switch.get(tx_type)(tx_payload)
-        return retval
-
     def update_state(self, new_state_wrapper: list) -> None:
         """
         Given the freshly-downloaded state, call a handler on each transaction
@@ -142,7 +124,6 @@ class BlockchainGateway(object):
         new_state = dict(new_state_wrapper).get('messages')
         len_state = len(self.state)
         for i in new_state[len_state:]:
-            # new_item = self.handler(i)
             self.state.append(i)
 
     def setter(self, key: str, value: object, flag: bool = False) -> str:
@@ -280,11 +261,12 @@ class BlockchainGateway(object):
         value = tx.get('content')
         args = {'key': key, 'content': self._ipfs_to_content(value)}
         self.communication_manager.inform("new_session", args)
+        self.listen_new_weights()
 
     def handle_new_weights(self, key: str, value: str):
         """
-        handle_new_weights() method downloads weights and does something with it
-        This callback is triggered by the Listener when it sees new weights 
+        handle_new_weights() method downloads weights and does something with
+        it. This callback is triggered by the Listener when it sees new weights 
         intended for its node ID. Downloads the weights, and gives them to the
         comm. mgr which gives them to the relevant optimizer 
         -which should do the moving average.
@@ -292,9 +274,9 @@ class BlockchainGateway(object):
         key = tx.get('key')
         value = tx.get('content')
         args = {'key': key, 'content': self._ipfs_to_content(value)}
-        # weights = self.getter(key, value)
         # TODO: Put into in-memory datastore.   
         self.communication_manager.inform("new_weights", args)
+        self.listen_new_weights()
 
     def handle_terminate(self):
         self.communication_manager.inform("TERMINATE", None)
@@ -302,14 +284,16 @@ class BlockchainGateway(object):
     def listen_decentralized_learning(self):
         """
         Polls blockchain for node ID in decentralized_learning() method
-        signature decentralized_learning(...<node_ids>...) method signature will
-        be the key on the blockchain; listener should look for this, and if the
-        method signature contains its node id, it will trigger a callback
+        signature decentralized_learning(...<node_ids>...) method signature
+        will be the key on the blockchain; listener should look for this, and
+        if the method signature contains its node id, it will trigger a
+        callback
         """
         def filter(tx):
             logging.info("tx: {}".format(tx))
             return tx.get('key') == tx.get('content')
-        return self.filter_set(filter, self.handle_decentralized_learning_trainer)
+        return self.filter_set(filter,
+                                self.handle_decentralized_learning_trainer)
 
     def broadcast_new_weights(self, tx: dict) -> str:
         """
