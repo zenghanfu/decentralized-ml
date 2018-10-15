@@ -37,13 +37,14 @@ class BlockchainGateway(object):
         # TODO: `communication_manager` is only used in a subset of methods,
         # consider separating
         self.communication_manager = communication_manager
-        self.communication_manager.configure_listener(self)
+        # TODO: We will do this once the Communication Manager is done.
+        # self.communication_manager.configure_listener(self)
 
         config = config_manager.get_config() if config_manager else {}
         self.state = []
-        self.host = config.get("BLOCKCHAIN", '127.0.0.1')
-        self.ipfs_port = config.get("BLOCKCHAIN", 5001)
-        self.port = config.get("BLOCKCHAIN", 3000)
+        self.host = config.get("BLOCKCHAIN", "host")
+        self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
+        self.port = config.get("BLOCKCHAIN", "http_port")
         self.client = None
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)

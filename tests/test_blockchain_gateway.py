@@ -11,7 +11,7 @@ from core.blockchain.blockchain_gateway import BlockchainGateway
 def config_manager():
     config_manager = ConfigurationManager()
     config_manager.bootstrap(
-        config_filepath='tests/artifacts/configuration.ini'
+        config_filepath='tests/artifacts/blockchain/configuration.ini'
     )
     return config_manager
 
@@ -36,26 +36,27 @@ def test_blockchain_gateway_public_interface_works(blockchain_gateway):
     get_val = blockchain_gateway.getter('hello')
     assert get_val == ['world']
 
-def test_listen_decentralized_learning(blockchain_gateway):
-    """To be implemented."""
-    pass
+# TODO: This will be implemented once we figure out how.
+# def test_listen_decentralized_learning(blockchain_gateway):
+#     """To be implemented."""
+#     pass
 
-def test_handle_decentralized_learning(blockchain_gateway):
-    """To be implemented."""
-    pass
+# def test_handle_decentralized_learning(blockchain_gateway):
+#     """To be implemented."""
+#     pass
 
-def test_listen_new_weights(blockchain_gateway):
-    """To be implemented."""
-    pass
+# def test_listen_new_weights(blockchain_gateway):
+#     """To be implemented."""
+#     pass
 
-def test_handle_new_weights(blockchain_gateway):
-    """To be implemented."""
-    pass
+# def test_handle_new_weights(blockchain_gateway):
+#     """To be implemented."""
+#     pass
 
-def test_listen_terminate(blockchain_gateway):
-    """To be implemented."""
-    pass
+# def test_listen_terminate(blockchain_gateway):
+#     """To be implemented."""
+#     pass
 
-def test_handle_terminate(blockchain_gateway):
-    """To be implemented."""
-    pass
+# def test_handle_terminate(blockchain_gateway):
+#     """To be implemented."""
+#     pass
