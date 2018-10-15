@@ -24,7 +24,6 @@ class BlockchainGateway(object):
     In order for this to work, the following must be running:
         IPFS Daemon: `ipfs daemon`
         The lotion app: `node app_trivial.js` from the application root directory
-    T
     """
 
     def __init__(self, config_manager, communication_manager):
@@ -37,14 +36,11 @@ class BlockchainGateway(object):
         self.communication_manager = communication_manager
         self.communication_manager.configure_listener(self)
 
-        config = config_manager.get_config()
+        config = config_manager.get_config() if config_manager else {}
         self.state = []
-        # self.host = config.get("BLOCKCHAIN", "host")
-        # self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
-        # self.port = config.get("BLOCKCHAIN", "http_port")
-        self.host = '127.0.0.1'
-        self.ipfs_port = 5001
-        self.port = 3000
+        self.host = config.get("BLOCKCHAIN", '127.0.0.1')
+        self.ipfs_port = config.get("BLOCKCHAIN", 5001)
+        self.port = config.get("BLOCKCHAIN", 3000)
         self.client = None
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
