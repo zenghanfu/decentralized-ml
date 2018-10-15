@@ -3,41 +3,36 @@ Communication Manager and the Optimizers."""
 
 from enum import Enum
 
-class ListenerEventTypes(Enum):
+class MessageEventTypes(Enum):
     """
-    listener events
+    Dictionary of events that the Blockchain Gateway might receive from the 
+    Communication Manager.
+
+    The event indicates what the Communication Manager wants the Gateway to
+    do with the information it is asking it to communicate.
     """
     NEW_WEIGHTS = "new_weights"
     NOTHING = "NOTHING"
 
-class CommMgrEventTypes(Enum):
+class RawEventTypes(Enum):
     """
-    commmgr events
+    Dictionary of events that the Optimizer might receive from the Communication
+    Manager.
+
+    The event indicates what has occurred previously in the Communication Manager.
+
+    This is essentially a 'memory' for the Optimizer so these are all past.
+    i.e., a "TRAIN" event would contain auxiliary information about what
+    occurred, in the form of a DMLResults object.
+
+    Contains all the functionality of what the Communication Manager might have
+    previously done and therefore is not specific to any one Optimizer.
     """
-    NEW_SESSION = "new_session"
-    NEW_WEIGHTS = "new_weights"
-    DONE_SPLITTING = "done_splitting"
-    SCHEDULE = "SCHEDULE"
+    NEW_SESSION = "NEW_SESSION"
+    NEW_WEIGHTS = "NEW_WEIGHTS"
     TERMINATE = "TERMINATE"
+    JOB_FINISHED = "JOB_FINISHED"
     NOTHING = "NOTHING"
-
-# class RawEventTypes(Enum):
-#     """
-#     Dictionary of events that the Optimizer might receive from the Communication
-#     Manager.
-
-#     The event indicates what has occurred previously in the Communication Manager.
-
-#     This is essentially a 'memory' for the Optimizer so these are all past.
-#     i.e., a "TRAIN" event would contain auxiliary information about what
-#     occurred, in the form of a DMLResults object.
-
-#     Contains all the functionality of what the Communication Manager might have
-#     previously done and therefore is not specific to any one Optimizer.
-#     """
-#     SCHEDULE = "SCHEDULE"
-#     TERMINATE = "TERMINATE"
-#     NOTHING = "NOTHING"
 
 class ActionableEventTypes(Enum):
     """
@@ -49,10 +44,9 @@ class ActionableEventTypes(Enum):
 
     This dictionary has to contain all possible states that an Optimizer can be in.
     """
-    TRAIN = "TRAIN"
-    COMMUNICATE = "COMMUNICATE"
-    AVERAGE = "AVERAGING"
     SPLIT = "SPLIT"
+    TRAIN = "TRAIN"
+    AVERAGE = "AVERAGE"
+    COMMUNICATE = "COMMUNICATE"
     TERMINATE = "TERMINATE"
-    # WEIGHT = "WEIGHT"
     NOTHING = "NOTHING"
