@@ -317,9 +317,8 @@ class BlockchainGateway(object):
         should populate the key of new_weights with all of the nodes for which
         these new weights are relevant. value should be IPFS hash.
         """
-        key = tx.get('key', None)
         content = tx.get('content', None)
-        weights = content.get('weights', None)
+        key = self.client.add_json(content)
         tx_receipt = self.setter(key, weights)
         return tx_receipt
 
