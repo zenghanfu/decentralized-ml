@@ -4,7 +4,7 @@ import pytest
 
 from core.configuration import ConfigurationManager
 from core.communication_manager import CommunicationManager
-from core.blockchain.blockchain_client import BlockchainGateway
+from core.blockchain.blockchain_gateway import BlockchainGateway
 
 
 @pytest.fixture
