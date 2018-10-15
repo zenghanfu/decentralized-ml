@@ -16,6 +16,7 @@ class CommMgrEventTypes(Enum):
     """
     NEW_SESSION = "new_session"
     NEW_WEIGHTS = "new_weights"
+    DONE_SPLITTING = "done_splitting"
     SCHEDULE = "SCHEDULE"
     TERMINATE = "TERMINATE"
     NOTHING = "NOTHING"

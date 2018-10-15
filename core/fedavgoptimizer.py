@@ -42,6 +42,7 @@ class FederatedAveragingOptimizer(Machine):
 			CommMgrEventTypes.SCHEDULE.name: self.handle_runner, 
 			CommMgrEventTypes.NEW_WEIGHTS.name: self.handle_listen,
 			CommMgrEventTypes.NOTHING.name: self.do_nothing,
+			CommMgrEventTypes.DONE_SPLITTING.name: self.done_splitting
 		}
 		
 	def increment_train_iter(self):
