@@ -129,7 +129,6 @@ class BlockchainGateway(object):
         IPFS and then store the hash as the value on the blockchain. The key
         should be a backward reference to a prior tx
         """
-        # logging.info("Posting to blockchain...")
         on_chain_value = self._upload(value) if value else None
         key = on_chain_value if flag else key
         tx = {'key': key, 'content': on_chain_value}
@@ -173,7 +172,6 @@ class BlockchainGateway(object):
         """
         Helper function to retrieve a Python object from an IPFS hash
         """
-        # logging.info("Grabbing IPFS hash: {}".format(ipfs_hash))
         return self.client.get_json(ipfs_hash)
 
     def _content_to_ipfs(self, content: dict) -> str:
@@ -182,7 +180,6 @@ class BlockchainGateway(object):
         returns an IPFS hash
         """
         ipfs_hash = self.client.add_json(content)
-        # logging.info("Sending IPFS hash: {}".format(ipfs_hash))
         return ipfs_hash
 
     ##########################################################################
@@ -225,7 +222,6 @@ class BlockchainGateway(object):
         poll
         """
         while True:
-            # logging.info("start_listening_loop")
             filtered_diffs = self.get_state_diffs(event_filter)
             if filtered_diffs:
                 return filtered_diffs
