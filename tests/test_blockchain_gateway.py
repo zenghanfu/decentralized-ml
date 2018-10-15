@@ -3,7 +3,7 @@ import tests.context
 import pytest
 
 from core.configuration import ConfigurationManager
-from core.communication_manager import CommunicationManager
+# from core.communication_manager import CommunicationManager
 from core.blockchain.blockchain_gateway import BlockchainGateway
 
 
@@ -15,10 +15,10 @@ def config_manager():
     )
     return config_manager
 
-@pytest.fixture
-def communication_manager(config_manager):
-    communication_manager = CommunicationManager(config_manager=config_manager)
-    return communication_manager
+# @pytest.fixture
+# def communication_manager(config_manager):
+#     communication_manager = CommunicationManager(config_manager=config_manager)
+#     return communication_manager
 
 @pytest.fixture
 def blockchain_gateway(config_manager, communication_manager):
