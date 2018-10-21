@@ -41,6 +41,11 @@ class DMLJob(object):
         self.hyperparams = hyperparams
         self.label_index = label_index
 
+    def set_weights(self, current_weights, new_weights, omega, sigma_omega):
+        self.weights = current_weights
+        self.new_weights = new_weights
+        self.omega = omega
+        self.sigma_omega = sigma_omega
 
 def serialize_job(dmljob_obj):
     """

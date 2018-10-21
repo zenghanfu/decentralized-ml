@@ -218,3 +218,25 @@ class DMLRunner(object):
             # model.summary()
             initial_weights = model.get_weights()
         return initial_weights
+
+    def _average(self, job):
+        from core.utils.keras import deserialize_weights
+        # get current weights
+        current_weights = job.weights
+        # get sum of omegas already averaged
+        sigma_omega = job.sigma_omega
+        # get omega
+        omega = job.omega
+        # get weights to be averaged
+        new_weights = job.new_weights
+        # deserialize
+        deserialized_new_weights = deserialize_weights(new_weights)
+        # pass these into average
+        averaged_weights = self.weighted_running_avg(current_weights, deserialized_new_weights, sigma_omega, omega)
+        return averaged_weights
+    
+    def weighted_running_avg(self, sigma_x_i_div_w_i, x_n, sigma_w_i, w_n):
+        import numpy as np
+        sigma_x_i = np.multiply(sigma_w_i, sigma_x_i_div_w_i)
+        cma_n_plus_one = np.divide(np.add(x_n, sigma_x_i), np.add(w_n,sigma_w_i))
+        return cma_n_plus_one
