@@ -51,3 +51,19 @@ class ActionableEventTypes(Enum):
     COMMUNICATE = "COMMUNICATE"
     TERMINATE = "TERMINATE"
     NOTHING = "NOTHING"
+
+def callback_handler(
+    callback_type,
+    callback_dict,
+    default=RawEventTypes.NOTHING.value
+    ):
+    """
+    Helper function which returns a callback from a callback
+    dict when given a callback type.
+    """
+    assert isinstance(callback_dict, dict), \
+        "callback_dict was not a dict, it was: {}".format(type(callback_dict))
+    callback = callback_dict[default]
+    if callback_type in callback_dict:
+        callback = callback_dict[callback_type]
+    return callback

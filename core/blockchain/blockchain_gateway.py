@@ -3,7 +3,7 @@ import asyncio
 import ipfsapi
 
 from core.blockchain.blockchain_utils import *
-from core.utils.event_types import MessageEventTypes
+from core.utils.event_types import *
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -46,10 +46,11 @@ class BlockchainGateway(object):
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
 
-        self.CALLBACKS = {
-            MessageEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
-            MessageEventTypes.NOTHING.name: do_nothing,
-        }
+        # NOTE: This class should not have any callbacks or any public methods.
+        # self.CALLBACKS = {
+        #     MessageEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
+        #     MessageEventTypes.NOTHING.name: do_nothing,
+        # }
 
     ##########################################################################
     ###                         DEVELOPER SECTION                          ###
@@ -91,7 +92,8 @@ class BlockchainGateway(object):
         poll
         """
         while True:
-            filtered_diffs = self.get_state_diffs(event_filter)
+            global_state_wrapper = get_global_state(self.port, self.host, self.timeout)
+            filtered_diffs = filter_diffs(self.state, global_state_wrapper, event_filter)
             if filtered_diffs:
                 return filtered_diffs
             await asyncio.sleep(self.timeout)
@@ -106,7 +108,7 @@ class BlockchainGateway(object):
         try:
             filtered_diffs = loop.run_until_complete(
                 self.start_listening(event_filter, handler))
-            check = [handler(diff) for diff in filtered_diffs]
+            check = list(map(event_filter, filtered_diffs))
         finally:
             loop.close()
         return check
@@ -122,8 +124,8 @@ class BlockchainGateway(object):
         assert TxEnum.KEY.name in tx
         key = tx.get(TxEnum.KEY.name)
         value = tx.get('content')
-        args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: self._ipfs_to_content(value)}
-        self.communication_manager.inform("new_session", args)
+        args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
+        self.communication_manager.inform(RawEventTypes.NEW_SESSION.name, args)
         self.listen_new_weights()
 
     def handle_new_weights(self, tx: dict):
@@ -134,12 +136,13 @@ class BlockchainGateway(object):
         comm. mgr which gives them to the relevant optimizer 
         -which should do the moving average.
         """
+        # TODO: Upon CommMgr PR being merged, update this with the appropriate args
         logging.info("handling new weights...{}".format(tx))
         key = tx.get(TxEnum.KEY.name)
         value = tx.get(TxEnum.CONTENT.name)
-        args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: self._ipfs_to_content(value)}
-        # TODO: Put into in-memory datastore.   
-        self.communication_manager.inform(MessageEventTypes.NEW_WEIGHTS.name,
+        args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
+        # TODO: Put into in-memory datastore.
+        self.communication_manager.inform("NEW_INFO",
                                             args)
         self.listen_new_weights()
 
@@ -160,16 +163,19 @@ class BlockchainGateway(object):
         return self.filter_set(filter,
                                 self.handle_decentralized_learning_trainer)
 
-    def broadcast_new_weights(self, tx: dict) -> str:
-        """
-        broadcast_new_weights() method with all relevant parameters
-        should populate the key of new_weights with all of the nodes for which
-        these new weights are relevant. value should be IPFS hash.
-        """
-        content = tx.get('content', None)
-        key = self.client.add_json(content['weights'])
-        tx_receipt = self.setter(key, content['gradient'])
-        return tx_receipt
+    # NOTE: Will be deprecated in future 'Communication Job' PR.
+    # Keeping here for visibility.
+
+    # def broadcast_new_weights(self, tx: dict) -> str:
+    #     """
+    #     broadcast_new_weights() method with all relevant parameters
+    #     should populate the key of new_weights with all of the nodes for which
+    #     these new weights are relevant. value should be IPFS hash.
+    #     """
+    #     content = tx.get('content', None)
+    #     key = self.client.add_json(content['weights'])
+    #     tx_receipt = setter(key, content['gradient'], self.client, self.port)
+    #     return tx_receipt
 
     def listen_new_weights(self) -> None:
         """
@@ -192,32 +198,22 @@ class BlockchainGateway(object):
             logging.info("tx: {}".format(tx))
             return tx.get('content') is None
         self.filter_set(filter, self.handle_terminate)
+    
+    # NOTE: This class should never be 'informed'
 
-    def inform(self, event_type, payload) -> None:
-        """
-        Method called by other modules to inform the Listener about
-        events that are going on in the service.
-        These payloads are relayed to the blockchain (right now the only
-        one, in the future, the one corresponding to the session_id passed),
-        based on some internal logic of the Listener.
-        For example: A runner could inform the Communication Manager that the
-        node is done training a particular model, to which the Optimizer could
-        decide it's time to communicate the new weights to the network.
-        If the Optimizer says yes, then the Communication Manager should
-        relay this info to the Listener, and the Listener uploads weights.
-        """
-        self._parse_and_run_callback(event_type, payload)
+    # def inform(self, event_type, payload) -> None:
+    #     """
+    #     Method called by other modules to inform the Listener about
+    #     events that are going on in the service.
+    #     These payloads are relayed to the blockchain (right now the only
+    #     one, in the future, the one corresponding to the session_id passed),
+    #     based on some internal logic of the Listener.
+    #     For example: A runner could inform the Communication Manager that the
+    #     node is done training a particular model, to which the Optimizer could
+    #     decide it's time to communicate the new weights to the network.
+    #     If the Optimizer says yes, then the Communication Manager should
+    #     relay this info to the Listener, and the Listener uploads weights.
+    #     """
+    #     callback = callback_handler(event_type, self.CALLBACKS, MessageEventTypes.NOTHING.name)
+    #     callback(payload)
 
-    def _parse_and_run_callback(self, event_type: str, payload:dict) -> None:
-        """
-        Parses an message_event and runs the
-        corresponding "callback" based on the event type, which could be to do
-        nothing.
-        The way this method parses an event is by stripping out the event type
-        and sending the raw payload to the callback function, which will handle
-        everything from there on.
-        """
-        logging.info("payload:{}".format(payload))
-        callback = self.CALLBACKS.get(event_type,
-                                        MessageEventTypes.NOTHING.value)
-        callback(payload)
