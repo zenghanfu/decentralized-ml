@@ -3,7 +3,7 @@ import requests
 import time
 from typing import Callable
 
-from core.utils.tx_enum import TxEnum
+from core.utils.tx_enum import TxEnum, Transaction
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -51,42 +51,69 @@ def content_to_ipfs(client: object, content: dict) -> str:
 ###                                REQUESTS                                ###
 ##############################################################################
 
-def construct_getter_call(port: int, host: str = '127.0.0.1') -> str:
+def construct_getter_call(port: int, host: str) -> str:
     return "http://{0}:{1}/state".format(host, port)
 
-def make_getter_call(port: int, host: str = '127.0.0.1') -> object:
+def make_getter_call(port: int, host: str) -> object:
     tx_receipt = requests.get(construct_getter_call(port, host))
     tx_receipt.raise_for_status()
     return tx_receipt
 
-def construct_setter_call(port: int, host: str = '127.0.0.1') -> str:
+def construct_setter_call(port: int, host: str) -> str:
     return "http://{0}:{1}/txs".format(host, port)
 
-def make_setter_call(tx: dict, port: int, host: str = '127.0.0.1') -> object:
+def make_setter_call(tx: dict, port: int, host: str) -> object:
     tx_receipt = requests.post(construct_setter_call(port, host), json=tx)
     tx_receipt.raise_for_status()
     return tx_receipt
 
-##############################################################################
-###                                 STATE                                  ###
-##############################################################################
-
-def get_global_state(port: int, timeout: int) -> object:
+def get_global_state(port: int, host: str, timeout: int) -> object:
     """
     Gets the global state which should be a list of dictionaries
-    TODO: perhaps it might be better to offload the retrying to the request method
+    TODO: perhaps it might be better to offload the retrying to the request methods
     """
     timeout = time.time() + timeout
     tx_receipt = None
     while time.time() < timeout:
         try:
-            retval = make_getter_call(port).json()
+            retval = make_getter_call(port, host).json()
             break
         except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
             logging.info("HTTP GET error, got: {0}".format(e))
             continue
     logging.info("global state: {}".format(retval))
     return retval
+
+def getter(self, key: str) -> list:
+    """
+    Provided a key, get the IPFS hash from the blockchain and download the
+    object from IPFS
+    """
+    logging.info("Getting from blockchain...")
+    self.state += update_diffs(self.state,
+                                get_global_state(self.port, self.timeout))
+    return download(self.client, self.state, key)
+
+def setter(key: str, value: object, client: object, port: int,
+            host: str = '127.0.0.1', flag: bool = False) -> str:
+    """
+    Provided a key and a JSON/np.array object, upload the object to IPFS and
+    then store the hash as the value on the blockchain. The key should be a
+    backward reference to a prior tx
+    """
+    logging.info("Setting to blockchain...")
+    on_chain_value = upload(client, value) if value else None
+    key = on_chain_value if flag else key
+    tx = Transaction(key, on_chain_value)
+    try:
+        tx_receipt = make_setter_call(tx, port, host)
+    except Exception as e:
+        logging.info("HTTP POST error, got: {0}".format(e))
+    return tx_receipt.text
+
+##############################################################################
+###                                 DIFFS                                  ###
+##############################################################################
 
 def get_diffs(local_state: list, global_state: list) -> list:
     """
@@ -117,6 +144,10 @@ def update_diffs(local_state: list, global_state_wrapper: object,
     new_state = get_diffs(local_state,
                             global_state_wrapper.get(TxEnum.MESSAGES.name, {}))
     return list(map(handler, new_state))
+
+##############################################################################
+###                                 MISC                                   ###
+##############################################################################
 
 def do_nothing(payload: dict) -> None:
     """

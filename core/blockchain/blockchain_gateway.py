@@ -52,39 +52,6 @@ class BlockchainGateway(object):
         }
 
     ##########################################################################
-    ###                            API SECTION                             ###
-    ##########################################################################
-
-    def setter(self, key: str, value: object, flag: bool = False) -> str:
-        """
-        Provided a key and a JSON/np.array object, upload the object to
-        IPFS and then store the hash as the value on the blockchain. The key
-        should be a backward reference to a prior tx
-        """
-        logging.info("Setting to blockchain...")
-        on_chain_value = upload(self.client, value) if value else None
-        key = on_chain_value if flag else key
-        tx = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: on_chain_value}
-        try:
-            print(tx)
-            tx_receipt = requests.post(construct_setter_call(self.port), json=tx)
-            tx_receipt.raise_for_status()
-            print("bfbiewbrhferuhfr", tx_receipt.json())
-        except Exception as e:
-            logging.info("HTTP POST error, got: {0}".format(e))
-        return tx_receipt.text
-
-    def getter(self, key: str) -> list:
-        """
-        Provided a key, get the IPFS hash from the blockchain and download the
-        object from IPFS
-        """
-        logging.info("Getting from blockchain...")
-        self.state += update_diffs(self.state,
-                                    get_global_state(self.port, self.timeout))
-        return download(self.client, self.state, key)
-
-    ##########################################################################
     ###                         DEVELOPER SECTION                          ###
     ##########################################################################
 
