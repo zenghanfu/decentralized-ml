@@ -1,14 +1,8 @@
 import asyncio
-import base58
-import json
-import logging
-import os
-import requests
-import time
 
 import ipfsapi
 
-from core.configuration import ConfigurationManager
+from core.blockchain.blockchain_utils import *
 from core.utils.event_types import MessageEventTypes
 
 
@@ -20,7 +14,7 @@ class BlockchainGateway(object):
     """
     Blockchain Gateway 
 
-    The blockchain client exposes `setter` and `getter` in order to interact
+    The blockchain gateway exposes `setter` and `getter` in order to interact
     with the blockchain.
 
     In order for this to work, the following must be running:
@@ -33,18 +27,19 @@ class BlockchainGateway(object):
         """
         TODO: Refactor dependencies
         TODO: deal with config
+        TODO: `communication_manager` is only used in a subset of methods,
+        consider separating
         """
-        # TODO: `communication_manager` is only used in a subset of methods,
-        # consider separating
         self.communication_manager = communication_manager
         # TODO: We will do this once the Communication Manager is done.
         # self.communication_manager.configure_listener(self)
 
-        config = config_manager.get_config() if config_manager else {}
+        config = config_manager.get_config() # TODO: remove this inline comment; if config_manager else {}
         self.state = []
         self.host = config.get("BLOCKCHAIN", "host")
-        self.ipfs_port = config.get("BLOCKCHAIN", "ipfs_port")
-        self.port = config.get("BLOCKCHAIN", "http_port")
+        self.ipfs_port = config.getint("BLOCKCHAIN", "ipfs_port")
+        self.port = config.getint("BLOCKCHAIN", "http_port")
+        self.timeout = config.getint("BLOCKCHAIN", "timeout")
         self.client = None
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
@@ -53,78 +48,12 @@ class BlockchainGateway(object):
 
         self.CALLBACKS = {
             MessageEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
-            MessageEventTypes.NOTHING.name: self._do_nothing,
+            MessageEventTypes.NOTHING.name: do_nothing,
         }
 
     ##########################################################################
     ###                            API SECTION                             ###
     ##########################################################################
-
-    def _do_nothing(self, payload: dict):
-        """
-        Do nothing.
-        """
-        pass
-
-    def get_global_state(self):
-        """
-        Gets the global state which should be a list of dictionaries
-        """
-        timeout = time.time() + 5
-        tx_receipt = None
-        while time.time() < timeout:
-            try:
-                tx_receipt = requests.get(
-                    "http://localhost:{0}/state".format(self.port))
-                tx_receipt.raise_for_status()
-                if tx_receipt:
-                    break
-            except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
-                logging.info("HTTP GET error, got: {0}".format(e))
-                continue
-        logging.info("global state:{}".format(tx_receipt.json()))
-        return tx_receipt.json()
-
-    def get_diffs(self, old_state: list, new_state: dict) -> list:
-        """
-        Iterate through oldState and newState to see any differences
-        Take action based on the differences
-        """
-        tx_diffs = [tx for tx in new_state.get('messages') if (
-                        tx not in old_state)]
-        return tx_diffs
-
-    def get_state_diffs(self, event_filter: object) -> list:
-        """
-        Gets state, then finds diffs, then sets state of blockchain.
-        """
-        new_state = self.get_global_state()
-        if new_state:
-            state_diffs = self.get_diffs(self.state, new_state)
-            filtered_diffs = [tx for tx in state_diffs if event_filter(tx)]
-            logging.info("filtered diffs:{}".format(filtered_diffs))
-            self.update_state(new_state)
-            return filtered_diffs
-
-    def check_malformed_content(self) -> None:
-        """
-        Checks whether content is of the form
-            `{
-                type: ... ,
-                payload: ...
-            }`
-        """
-        pass
-
-    def update_state(self, new_state_wrapper: list) -> None:
-        """
-        Given the freshly-downloaded state, call a handler on each transaction
-        that was not already present in our own state
-        """
-        new_state = dict(new_state_wrapper).get('messages')
-        len_state = len(self.state)
-        for i in new_state[len_state:]:
-            self.state.append(i)
 
     def setter(self, key: str, value: object, flag: bool = False) -> str:
         """
@@ -132,58 +61,28 @@ class BlockchainGateway(object):
         IPFS and then store the hash as the value on the blockchain. The key
         should be a backward reference to a prior tx
         """
-        on_chain_value = self._upload(value) if value else None
+        logging.info("Setting to blockchain...")
+        on_chain_value = upload(self.client, value) if value else None
         key = on_chain_value if flag else key
-        tx = {'key': key, 'content': on_chain_value}
+        tx = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: on_chain_value}
         try:
-            tx_receipt = requests.post(
-                "http://localhost:{0}/txs".format(self.port), json=tx)
+            print(tx)
+            tx_receipt = requests.post(construct_setter_call(self.port), json=tx)
             tx_receipt.raise_for_status()
+            print("bfbiewbrhferuhfr", tx_receipt.json())
         except Exception as e:
             logging.info("HTTP POST error, got: {0}".format(e))
         return tx_receipt.text
 
     def getter(self, key: str) -> list:
         """
-        Next, provided a key, get the IPFS hash
-        from the blockchain and download the object from IPFS
+        Provided a key, get the IPFS hash from the blockchain and download the
+        object from IPFS
         """
         logging.info("Getting from blockchain...")
-        self.update_state(self.get_global_state())
-        retval = self._download(key)
-        return retval
-
-    def _upload(self, obj: object) -> str:
-        """
-        Provided any Python object, store it on IPFS and then upload
-        the hash that will be uploaded to the blockchain as a value
-        """
-        ipfs_hash = self._content_to_ipfs(obj)
-        return str(ipfs_hash)
-
-    def _download(self, key: str) -> object:
-        """
-        Provided an on-chain key, retrieve the value from local state and
-        retrieve the Python object from IPFS
-        TODO: implement a better way to parse through state list
-        """
-        relevant_txs = [self._ipfs_to_content(tx.get('content'))
-                            for tx in self.state if (tx.get('key') == key)]
-        return relevant_txs
-
-    def _ipfs_to_content(self, ipfs_hash: str) -> object:
-        """
-        Helper function to retrieve a Python object from an IPFS hash
-        """
-        return self.client.get_json(ipfs_hash)
-
-    def _content_to_ipfs(self, content: dict) -> str:
-        """
-        Helper function to deploy a Python object onto IPFS, 
-        returns an IPFS hash
-        """
-        ipfs_hash = self.client.add_json(content)
-        return ipfs_hash
+        self.state += update_diffs(self.state,
+                                    get_global_state(self.port, self.timeout))
+        return download(self.client, self.state, key)
 
     ##########################################################################
     ###                         DEVELOPER SECTION                          ###
@@ -216,7 +115,7 @@ class BlockchainGateway(object):
     ###                          PROVIDER SECTION                          ###
     ##########################################################################
 
-    async def start_listening(self, event_filter, handler, poll_interval=5):
+    async def start_listening(self, event_filter, handler):
         """
         Starts an indefinite loop that listens for a specific event to occur.
         Called in `filter_set`. Filters are some condition that must be
@@ -228,7 +127,7 @@ class BlockchainGateway(object):
             filtered_diffs = self.get_state_diffs(event_filter)
             if filtered_diffs:
                 return filtered_diffs
-            await asyncio.sleep(poll_interval)
+            await asyncio.sleep(self.timeout)
 
     def filter_set(self, event_filter, handler):
         """
@@ -253,9 +152,10 @@ class BlockchainGateway(object):
         and put into the optimizer initially. So the optimizer knows this info.
         """
         logging.info("handling decentralized learning... {}".format(tx))
-        key = tx.get('key')
+        assert TxEnum.KEY.name in tx
+        key = tx.get(TxEnum.KEY.name)
         value = tx.get('content')
-        args = {'key': key, 'content': self._ipfs_to_content(value)}
+        args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: self._ipfs_to_content(value)}
         self.communication_manager.inform("new_session", args)
         self.listen_new_weights()
 
@@ -268,14 +168,15 @@ class BlockchainGateway(object):
         -which should do the moving average.
         """
         logging.info("handling new weights...{}".format(tx))
-        key = tx.get('key')
-        value = tx.get('content')
-        args = {'key': key, 'content': self._ipfs_to_content(value)}
+        key = tx.get(TxEnum.KEY.name)
+        value = tx.get(TxEnum.CONTENT.name)
+        args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: self._ipfs_to_content(value)}
         # TODO: Put into in-memory datastore.   
-        self.communication_manager.inform("new_weights", args)
+        self.communication_manager.inform(MessageEventTypes.NEW_WEIGHTS.name,
+                                            args)
         self.listen_new_weights()
 
-    def handle_terminate(self):
+    def handle_terminate(self) -> None:
         self.communication_manager.inform("TERMINATE", None)
 
     def listen_decentralized_learning(self):
@@ -288,7 +189,7 @@ class BlockchainGateway(object):
         """
         def filter(tx):
             logging.info("tx: {}".format(tx))
-            return tx.get('key') == tx.get('content')
+            return tx.get(TxEnum.KEY.name) == tx.get(TxEnum.CONTENT.name)
         return self.filter_set(filter,
                                 self.handle_decentralized_learning_trainer)
 
@@ -303,7 +204,7 @@ class BlockchainGateway(object):
         tx_receipt = self.setter(key, content['gradient'])
         return tx_receipt
 
-    def listen_new_weights(self):
+    def listen_new_weights(self) -> None:
         """
         Polls blockchain for node ID in new_weights() method signature
         new_weights(...<node_ids>...) method signature will be the key on the
@@ -313,10 +214,10 @@ class BlockchainGateway(object):
         logging.info("I'm listening for new weights!")
         def weights_filter(tx):
             logging.info("filtering for new weights: {}".format(tx))
-            return tx.get('key') != tx.get('content')
+            return tx.get(TxEnum.KEY.name) != tx.get(TxEnum.CONTENT.name)
         self.filter_set(weights_filter, self.handle_new_weights)
 
-    def listen_terminate(self):
+    def listen_terminate(self) -> None:
         """
         Polls blockchain to see whether to terminate
         """
@@ -325,7 +226,7 @@ class BlockchainGateway(object):
             return tx.get('content') is None
         self.filter_set(filter, self.handle_terminate)
 
-    def inform(self, event_type, payload):
+    def inform(self, event_type, payload) -> None:
         """
         Method called by other modules to inform the Listener about
         events that are going on in the service.
@@ -340,9 +241,9 @@ class BlockchainGateway(object):
         """
         self._parse_and_run_callback(event_type, payload)
 
-    def _parse_and_run_callback(self, event_type, payload):
+    def _parse_and_run_callback(self, event_type: str, payload:dict) -> None:
         """
-        Parses an actionable_event and runs the
+        Parses an message_event and runs the
         corresponding "callback" based on the event type, which could be to do
         nothing.
         The way this method parses an event is by stripping out the event type

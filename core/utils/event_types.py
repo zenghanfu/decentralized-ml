@@ -3,6 +3,7 @@ Communication Manager and the Optimizers."""
 
 from enum import Enum
 
+
 class MessageEventTypes(Enum):
     """
     Dictionary of events that the Blockchain Gateway might receive from the 
@@ -11,7 +12,7 @@ class MessageEventTypes(Enum):
     The event indicates what the Communication Manager wants the Gateway to
     do with the information it is asking it to communicate.
     """
-    NEW_WEIGHTS = "new_weights"
+    NEW_WEIGHTS = "NEW_WEIGHTS"
     NOTHING = "NOTHING"
 
 class RawEventTypes(Enum):

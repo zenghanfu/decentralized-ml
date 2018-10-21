@@ -31,10 +31,21 @@ def blockchain_gateway(config_manager, communication_manager):
 def test_blockchain_gateway_can_be_initialized(blockchain_gateway):
     assert blockchain_gateway is not None
 
-def test_blockchain_gateway_public_interface_works(blockchain_gateway):
+def test_blockchain_gateway_public_interface_sanity(blockchain_gateway):
     blockchain_gateway.setter('hello', 'world')
     get_val = blockchain_gateway.getter('hello')
     assert get_val == ['world']
+
+def test_blockchain_gateway_public_interface_multiple_values(blockchain_gateway):
+    blockchain_gateway.setter('hello', 'world')
+    blockchain_gateway.setter('hello', 'goodbye')
+    blockchain_gateway.setter('hello', 'world')
+    get_val = blockchain_gateway.getter('hello')
+    assert get_val == ['world', 'world', 'goodbye', 'world']
+
+def test_blockchain_gateway_public_interface_nonexistant_value(blockchain_gateway):
+    get_val = blockchain_gateway.getter('unknown key')
+    assert get_val == []
 
 # TODO: This will be implemented once we figure out how.
 # def test_listen_decentralized_learning(blockchain_gateway):
