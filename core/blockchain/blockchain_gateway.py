@@ -46,12 +46,6 @@ class BlockchainGateway(object):
         except Exception as e:
             logging.info("IPFS daemon not started, got: {0}".format(e))
 
-        # NOTE: This class should not have any callbacks or any public methods.
-        # self.CALLBACKS = {
-        #     MessageEventTypes.NEW_WEIGHTS.name: self.broadcast_new_weights, 
-        #     MessageEventTypes.NOTHING.name: do_nothing,
-        # }
-
     ##########################################################################
     ###                         DEVELOPER SECTION                          ###
     ##########################################################################
@@ -163,20 +157,6 @@ class BlockchainGateway(object):
         return self.filter_set(filter,
                                 self.handle_decentralized_learning_trainer)
 
-    # NOTE: Will be deprecated in future 'Communication Job' PR.
-    # Keeping here for visibility.
-
-    # def broadcast_new_weights(self, tx: dict) -> str:
-    #     """
-    #     broadcast_new_weights() method with all relevant parameters
-    #     should populate the key of new_weights with all of the nodes for which
-    #     these new weights are relevant. value should be IPFS hash.
-    #     """
-    #     content = tx.get('content', None)
-    #     key = self.client.add_json(content['weights'])
-    #     tx_receipt = setter(key, content['gradient'], self.client, self.port)
-    #     return tx_receipt
-
     def listen_new_weights(self) -> None:
         """
         Polls blockchain for node ID in new_weights() method signature
@@ -199,21 +179,3 @@ class BlockchainGateway(object):
             return tx.get('content') is None
         self.filter_set(filter, self.handle_terminate)
     
-    # NOTE: This class should never be 'informed'
-
-    # def inform(self, event_type, payload) -> None:
-    #     """
-    #     Method called by other modules to inform the Listener about
-    #     events that are going on in the service.
-    #     These payloads are relayed to the blockchain (right now the only
-    #     one, in the future, the one corresponding to the session_id passed),
-    #     based on some internal logic of the Listener.
-    #     For example: A runner could inform the Communication Manager that the
-    #     node is done training a particular model, to which the Optimizer could
-    #     decide it's time to communicate the new weights to the network.
-    #     If the Optimizer says yes, then the Communication Manager should
-    #     relay this info to the Listener, and the Listener uploads weights.
-    #     """
-    #     callback = callback_handler(event_type, self.CALLBACKS, MessageEventTypes.NOTHING.name)
-    #     callback(payload)
-
