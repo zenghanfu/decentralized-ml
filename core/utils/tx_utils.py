@@ -8,7 +8,7 @@ class TxEnum(Enum):
     CONTENT = "CONTENT"
     MESSAGES = "MESSAGES"
 
-class Transaction(Object):
+class Transaction(object):
     """
     Object that represents transactions with the specification outlined:
         `{
