@@ -60,7 +60,7 @@ class BlockchainGateway(object):
         """
         Upload a model config and weights to the blockchain
         """
-        tx_receipt = self.setter(None, model_config, True)
+        tx_receipt = setter(None, model_config, self.client, self.port)
         return tx_receipt
 
     def broadcast_terminate(self, key: str) -> str:
@@ -68,7 +68,7 @@ class BlockchainGateway(object):
         Terminates decentralized training
         TODO: check if training even started
         """
-        tx_receipt = self.setter(key, None)
+        tx_receipt = setter(key, None, self.client, self.port)
         return tx_receipt
 
     def handle_decentralized_learning_owner(self, model_config: object) -> None:
@@ -76,7 +76,7 @@ class BlockchainGateway(object):
         Return weights after training terminates
         TODO: add condition to check if training for specific model terminated
         """
-        final_weights = self.getter(header)
+        final_weights = getter(self.client, model_config, self.state, self.port, self.timeout)
         return final_weights
 
     ##########################################################################
