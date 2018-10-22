@@ -23,7 +23,7 @@ class BlockchainGateway(object):
 
     """
 
-    def __init__(self, config_manager, communication_manager):
+    def __init__(self, config_manager: object, communication_manager: object):
         """
         TODO: Refactor dependencies
         TODO: deal with config
@@ -77,7 +77,8 @@ class BlockchainGateway(object):
     ###                          PROVIDER SECTION                          ###
     ##########################################################################
 
-    async def start_listening(self, event_filter, handler):
+    async def start_listening(self, event_filter: Callable,
+                                handler: Callable) -> list:
         """
         Starts an indefinite loop that listens for a specific event to occur.
         Called in `filter_set`. Filters are some condition that must be
@@ -92,7 +93,7 @@ class BlockchainGateway(object):
                 return filtered_diffs
             await asyncio.sleep(self.timeout)
 
-    def filter_set(self, event_filter, handler):
+    def filter_set(self, event_filter: Callable, handler: Callable) -> list:
         """
         Calls async method `start_listening` and called by various listening
         methods
@@ -143,7 +144,7 @@ class BlockchainGateway(object):
     def handle_terminate(self) -> None:
         self.communication_manager.inform("TERMINATE", None)
 
-    def listen_decentralized_learning(self):
+    def listen_decentralized_learning(self) -> list:
         """
         Polls blockchain for node ID in decentralized_learning() method
         signature decentralized_learning(...<node_ids>...) method signature
@@ -151,7 +152,7 @@ class BlockchainGateway(object):
         if the method signature contains its node id, it will trigger a
         callback
         """
-        def filter(tx):
+        def filter(tx: dict) -> str:
             logging.info("tx: {}".format(tx))
             return tx.get(TxEnum.KEY.name) == tx.get(TxEnum.CONTENT.name)
         return self.filter_set(filter,

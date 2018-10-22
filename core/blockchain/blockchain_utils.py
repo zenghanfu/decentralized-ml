@@ -7,6 +7,7 @@ from typing import Callable
 from core.utils.tx_utils import TxEnum, Transaction
 
 
+# TODO: does this need to be here?
 logging.basicConfig(level=logging.DEBUG,
     format='[BlockchainGateway] %(message)s')
 
