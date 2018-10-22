@@ -31,8 +31,6 @@ class BlockchainGateway(object):
         consider separating
         """
         self.communication_manager = communication_manager
-        # TODO: We will do this once the Communication Manager is done.
-        # self.communication_manager.configure_listener(self)
 
         config = config_manager.get_config() # TODO: remove this inline comment; if config_manager else {}
         self.state = []
