@@ -16,9 +16,12 @@ class Transaction(object):
             'value': ...
          }`
     """
-    def __init__(self, key: str, value: object) -> None:
+    def __init__(self, key: str, value: str) -> None:
         self.key = key
         self.value = value
 
-    def __repr__(self) -> dict:
+    def get_tx(self) -> dict:
+        print(self.key)
+        print(self.value)
+        print('jjj', {TxEnum.KEY.name: [self.key], TxEnum.CONTENT.name: self.value})
         return {TxEnum.KEY.name: self.key, TxEnum.CONTENT.name: self.value}

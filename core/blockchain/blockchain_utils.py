@@ -4,7 +4,7 @@ import requests
 import time
 from typing import Callable
 
-from core.utils.tx_utils import TxEnum, Transaction
+from core.blockchain.tx_utils import TxEnum, Transaction
 
 
 # TODO: does this need to be here?
@@ -99,7 +99,7 @@ def construct_setter_call(host: str, port: int) -> str:
     return "http://{0}:{1}/txs".format(host, port)
 
 def make_setter_call(host: str, port: int, tx: dict) -> object:
-    tx_receipt = requests.post(construct_setter_call(host, port), json=tx.__dict__)
+    tx_receipt = requests.post(construct_setter_call(host, port), json=tx)
     tx_receipt.raise_for_status()
     return tx_receipt
 
@@ -145,7 +145,7 @@ def setter(client: object, key: str, port: int, value: object,
     key = on_chain_value if flag else key
     tx = Transaction(key, on_chain_value)
     try:
-        tx_receipt = make_setter_call(host, port, tx)
+        tx_receipt = make_setter_call(host, port, tx.get_tx())
     except Exception as e:
         logging.info("HTTP POST error, got: {0}".format(e))
     return tx_receipt.text
