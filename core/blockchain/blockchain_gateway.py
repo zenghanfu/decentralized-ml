@@ -22,7 +22,7 @@ class BlockchainGateway(object):
     an event-driven programming paradigm using a series of asyncio loops for listening.
 
     # NOTE: For this PR we have left the functionality for the Developer in so that
-    it can be reviewed in the context of the functions it will be receiving.
+    we can actually test the Gateway. It will be left in until the Notebook can test.
 
     In order for this to work, the following must be running:
         IPFS Daemon: `ipfs daemon`
