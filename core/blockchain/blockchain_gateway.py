@@ -1,9 +1,12 @@
 import asyncio
-
+import logging
 import ipfsapi
+from typing import Callable
 
-from core.blockchain.blockchain_utils import *
-from core.utils.event_types import *
+from core.blockchain.blockchain_utils   import setter, getter, get_diffs, filter_diffs
+from core.blockchain.blockchain_utils   import get_global_state, ipfs_to_content
+from core.utils.event_types             import RawEventTypes
+from tx_utils                           import TxEnum
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -34,10 +37,11 @@ class BlockchainGateway(object):
         TODO: `communication_manager` is only used in a subset of methods,
         consider separating
         """
-        self.communication_manager = communication_manager
-
-        config = config_manager.get_config() # TODO: remove this inline comment; if config_manager else {}
         self.state = []
+
+    def configure(self, config_manager: object, communication_manager: object):
+        self.communication_manager = communication_manager
+        config = config_manager.get_config() # TODO: remove this inline comment; if config_manager else {}
         self.host = config.get("BLOCKCHAIN", "host")
         self.ipfs_port = config.getint("BLOCKCHAIN", "ipfs_port")
         self.port = config.getint("BLOCKCHAIN", "http_port")
