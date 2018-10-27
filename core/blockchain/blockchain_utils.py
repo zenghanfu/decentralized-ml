@@ -9,7 +9,7 @@ from core.blockchain.tx_utils import TxEnum, Transaction
 
 # TODO: does this need to be here?
 logging.basicConfig(level=logging.DEBUG,
-    format='[BlockchainGateway] %(message)s')
+    format='[BlockchainUtils] %(message)s')
 
 
 ##############################################################################
@@ -58,8 +58,7 @@ def get_diffs(global_state: list, local_state: list) -> list:
     Return list of transactions that are present in `global_state` but not in
     `local_state`
     """
-    len_local_state = len(local_state)
-    return global_state[len_local_state:]
+    return global_state[len(local_state):]
 
 # TODO: consider merging the two methods below into one
 
@@ -148,13 +147,3 @@ def setter(client: object, key: str, port: int, value: object,
     except Exception as e:
         logging.info("HTTP POST error, got: {0}".format(e))
     return tx_receipt.text
-
-##############################################################################
-###                                 MISC                                   ###
-##############################################################################
-
-def do_nothing(payload: dict) -> None:
-    """
-    Do nothing.
-    """
-    pass

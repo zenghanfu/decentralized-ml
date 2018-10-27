@@ -23,7 +23,7 @@ def ipfs_client(config):
 def test_blockchain_utils_getter_nonexistent_key(config, ipfs_client):
     get_val = getter(
         ipfs_client,
-        config.get('BLOCKCHAIN', 'test_key'),
+        config.get('BLOCKCHAIN', 'test_nonexistent_key'),
         [],
         config.getint('BLOCKCHAIN', 'http_port'),
         config.getint('BLOCKCHAIN', 'timeout')
@@ -31,36 +31,50 @@ def test_blockchain_utils_getter_nonexistent_key(config, ipfs_client):
     assert get_val == []
 
 def test_blockchain_utils_setter_simple(config, ipfs_client):
-    setter(ipfs_client,
-        config.get('BLOCKCHAIN', 'test_key'),
-        config.getint('BLOCKCHAIN', 'http_port'),
-        config.get('BLOCKCHAIN', 'test_value'),
-        )
-    get_val = getter(
+    get_val_before = getter(
         ipfs_client,
-        config.get('BLOCKCHAIN', 'test_key'),
+        config.get('BLOCKCHAIN', 'test_single_key'),
         [],
         config.getint('BLOCKCHAIN', 'http_port'),
         config.getint('BLOCKCHAIN', 'timeout')
         )
-    assert get_val == ["'World!'"]
+    setter(ipfs_client,
+        config.get('BLOCKCHAIN', 'test_single_key'),
+        config.getint('BLOCKCHAIN', 'http_port'),
+        config.get('BLOCKCHAIN', 'test_value'),
+        )
+    get_val_after = getter(
+        ipfs_client,
+        config.get('BLOCKCHAIN', 'test_single_key'),
+        [],
+        config.getint('BLOCKCHAIN', 'http_port'),
+        config.getint('BLOCKCHAIN', 'timeout')
+        )
+    assert get_val_after == get_val_before + ["'World!'"]
 
 def test_blockchain_utils_setter_multiple_values(config, ipfs_client):
-    setter(ipfs_client,
-        config.get('BLOCKCHAIN', 'test_key'),
-        config.getint('BLOCKCHAIN', 'http_port'),
-        config.get('BLOCKCHAIN', 'test_value'),
-        )
-    setter(ipfs_client,
-        config.get('BLOCKCHAIN', 'test_key'),
-        config.getint('BLOCKCHAIN', 'http_port'),
-        config.get('BLOCKCHAIN', 'test_value'),
-        )
-    get_val = getter(
+    get_val_before = getter(
         ipfs_client,
-        config.get('BLOCKCHAIN', 'test_key'),
+        config.get('BLOCKCHAIN', 'test_multiple_key'),
         [],
         config.getint('BLOCKCHAIN', 'http_port'),
         config.getint('BLOCKCHAIN', 'timeout')
         )
-    assert get_val == ["'World!'", "'World!'", "'World!'"]
+    setter(ipfs_client,
+        config.get('BLOCKCHAIN', 'test_multiple_key'),
+        config.getint('BLOCKCHAIN', 'http_port'),
+        config.get('BLOCKCHAIN', 'test_value'),
+        )
+    setter(ipfs_client,
+        config.get('BLOCKCHAIN', 'test_multiple_key'),
+        config.getint('BLOCKCHAIN', 'http_port'),
+        config.get('BLOCKCHAIN', 'test_value'),
+        )
+    get_val_after = getter(
+        ipfs_client,
+        config.get('BLOCKCHAIN', 'test_multiple_key'),
+        [],
+        config.getint('BLOCKCHAIN', 'http_port'),
+        config.getint('BLOCKCHAIN', 'timeout')
+        )
+    assert get_val_after == get_val_before + ["'World!'", "'World!'"]
