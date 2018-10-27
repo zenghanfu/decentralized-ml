@@ -4,17 +4,18 @@ import pytest
 import numpy as np
 
 from core.runner                import DMLRunner
-from custom.keras               import get_optimizer
-from models.keras_perceptron    import KerasPerceptron
-from core.utils.dmljob          import DMLJob
 from core.configuration         import ConfigurationManager
+from core.utils.keras           import serialize_weights
+from core.utils.enums           import JobTypes
+from tests.testing_utils        import make_initialize_job, make_model_json
+from tests.testing_utils        import make_train_job, make_validate_job, make_hyperparams
 
 
 @pytest.fixture
 def config_manager():
     config_manager = ConfigurationManager()
     config_manager.bootstrap(
-        config_filepath='tests/artifacts/configuration.ini'
+        config_filepath='tests/artifacts/runner_scheduler/configuration.ini'
     )
     return config_manager
 
@@ -134,7 +135,7 @@ def test_dmlrunner_averaging_weights(config_manager):
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(model_json)
     initial_weights = runner.run_job(initialize_job).results['initial_weights']
-    from core.utils.keras import deserialize_weights, serialize_weights
+    from core.utils.keras import serialize_weights
     serialized_weights = serialize_weights(initial_weights)
     initialize_job.set_weights(initial_weights, serialized_weights, 1, 1)
     averaged_weights = runner._average(initialize_job)
