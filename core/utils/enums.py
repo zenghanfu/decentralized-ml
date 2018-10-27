@@ -75,9 +75,13 @@ class ActionableEventTypes(Enum):
         TERMINATE: Instruction to the Communication Manager to terminate a
         DML Session.
 
+        NOTHING: Don't do anything; result of asking Optimizer for what to do 
+        after averaging, when the Optimizer hasn't seen all the other weights
+
     """
     SCHEDULE_JOB = "SCHEDULE_JOB"
     TERMINATE = "TERMINATE"
+    NOTHING = "NOTHING"
 
 def callback_handler_with_default(callback_type, callback_dict, default="NOTHING"):
     """

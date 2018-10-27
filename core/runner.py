@@ -51,6 +51,7 @@ class DMLRunner(object):
             JobTypes.JOB_INIT.name: self._initialize_model,
             JobTypes.JOB_VAL.name: self._validate,
             JobTypes.JOB_AVG.name: self._average,
+            JobTypes.JOB_COMM.name: self._communicate
         }
 
     def run_job(self, job):
@@ -121,7 +122,7 @@ class DMLRunner(object):
 
         # Train the model the right way based on the model type.
         assert job.framework_type in ['keras'], \
-            "Model type '{0}' is not supported.".format(framework_type)
+            "Model type '{0}' is not supported.".format(job.framework_type)
         if job.framework_type == 'keras':
             new_weights_path, train_stats = train_keras_model(
                 job.serialized_model,
@@ -245,10 +246,21 @@ class DMLRunner(object):
             },
             error_message="",
         )
-        return results
+        return result
     
     def weighted_running_avg(self, sigma_x_i_div_w_i, x_n, sigma_w_i, w_n):
         import numpy as np
         sigma_x_i = np.multiply(sigma_w_i, sigma_x_i_div_w_i)
         cma_n_plus_one = np.divide(np.add(x_n, sigma_x_i), np.add(w_n,sigma_w_i))
         return cma_n_plus_one
+
+    def _communicate(self, job):
+        result = DMLResult(
+            status='successful',
+            job=job,
+            results={
+                'weights': job.weights,
+            },
+            error_message="",
+        )
+        return result

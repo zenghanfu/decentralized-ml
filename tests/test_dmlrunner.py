@@ -19,65 +19,6 @@ def config_manager():
     )
     return config_manager
 
-
-def make_dataset_path():
-    return 'datasets/mnist'
-
-
-def make_model_json():
-    m = KerasPerceptron(is_training=True)
-    model_architecture = m.model.to_json()
-    model_optimizer = get_optimizer(m.model)
-    model_json = {
-        "architecture": model_architecture,
-        "optimizer": model_optimizer
-    }
-    return model_json
-
-
-def make_hyperparams():
-    hyperparams = {
-        'averaging_type': 'data_size',
-        'batch_size': 4,
-        'epochs': 1,
-        'split': 0.004,
-    }
-    return hyperparams
-
-
-def make_initialize_job(model_json):
-    initialize_job = DMLJob(
-        "initialize",
-        model_json,
-        "keras"
-    )
-    return initialize_job
-
-
-def make_train_job(model_json, initial_weights, hyperparams):
-    train_job = DMLJob(
-        "train",
-        model_json,
-        "keras",
-        initial_weights,
-        hyperparams,
-        0
-    )
-    return train_job
-
-
-def make_validate_job(model_json, new_weights, hyperparams):
-    validate_job = DMLJob(
-        "validate",
-        model_json,
-        'keras',
-        new_weights,
-        hyperparams,
-        0
-    )
-    return validate_job
-
-
 # def test_dmlrunner_initialize_job_returns_list_of_nparray(config_manager):
 #     model_json = make_model_json()
 #     runner = DMLRunner(config_manager)
@@ -124,7 +65,7 @@ def test_dmlrunner_initialize_job_weights_can_be_serialized(config_manager):
     model_json = make_model_json()
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(model_json)
-    initial_weights = runner.run_job(initialize_job).results['initial_weights']
+    initial_weights = runner.run_job(initialize_job).results['weights']
     from core.utils.keras import deserialize_weights, serialize_weights
     same_weights = deserialize_weights(serialize_weights(initial_weights))
     assert(np.shape(same_weights) == np.shape(initial_weights))
@@ -134,9 +75,9 @@ def test_dmlrunner_averaging_weights(config_manager):
     model_json = make_model_json()
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(model_json)
-    initial_weights = runner.run_job(initialize_job).results['initial_weights']
+    initial_weights = runner.run_job(initialize_job).results['weights']
     from core.utils.keras import serialize_weights
     serialized_weights = serialize_weights(initial_weights)
     initialize_job.set_weights(initial_weights, serialized_weights, 1, 1)
-    averaged_weights = runner._average(initialize_job)
+    averaged_weights = runner._average(initialize_job).results['weights']
     assert all([np.count_nonzero(arr)==0 for arr in np.subtract(averaged_weights, initial_weights)])

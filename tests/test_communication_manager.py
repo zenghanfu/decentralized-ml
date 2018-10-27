@@ -160,6 +160,55 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
     assert optimizer_job.hyperparams == true_job.hyperparams
     assert optimizer_job.label_column_name == true_job.label_column_name
 
+def test_communication_manager_can_request_average():
+    """
+    Ensures that upon hearing new info, the Communication Manager will end up
+    scheduling an averaging job, and that that averaging job will be correct.
+    """
+    communication_manager = CommunicationManager()
+    scheduler = DMLScheduler(config_manager)
+    communication_manager.configure(scheduler)
+    scheduler.configure(communication_manager)
+    true_job = make_initialize_job(make_model_json())
+    serialized_job = serialize_job(true_job)
+    new_session_event = {
+        "key": None,
+        "content": {
+            "optimizer_params": {},
+            "serialized_job": serialized_job
+        }
+    }
+    communication_manager.inform(
+        RawEventTypes.NEW_SESSION.name,
+        new_session_event
+    )
+    while len(scheduler.processed) == 0:
+        scheduler.runners_run_next_jobs()
+        time.sleep(0.1)
+    while len(scheduler.processed) == 1:
+        scheduler.runners_run_next_jobs()
+        time.sleep(0.1)
+    assert len(scheduler.processed) == 2
+    from core.utils.keras import serialize_weights
+    new_weights_event = {
+        "key": RawEventTypes.NEW_WEIGHTS.name,
+        "content": {
+            "weights": serialize_weights(communication_manager.optimizer.job.weights)
+        }
+    }
+    communication_manager.inform(
+        RawEventTypes.NEW_INFO.name,
+        new_weights_event
+    )
+    while len(scheduler.processed) == 2:
+        scheduler.runners_run_next_jobs()
+        time.sleep(0.1)
+    assert len(scheduler.processed) == 3
+    for _ in range(10):
+        if len(scheduler.processed) == 3:
+            scheduler.runners_run_next_jobs()
+            time.sleep(0.1)
+    assert communication_manager.optimizer.listen_iterations == 1
 
 # NOTE: The following are tests that we will implement soon.
 
