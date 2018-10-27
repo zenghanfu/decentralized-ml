@@ -14,12 +14,16 @@ class BlockchainGateway(object):
     """
     Blockchain Gateway 
 
-    The blockchain gateway exposes `setter` and `getter` in order to interact
-    with the blockchain.
+    The blockchain gateway listens to the blockchain and notifies the appropriate classes
+    inside the Unix Service when there is relevant information ready for them. Follows
+    an event-driven programming paradigm using a series of asyncio loops for listening.
+
+    # NOTE: For this PR we have left the functionality for the Developer in so that
+    it can be reviewed in the context of the functions it will be receiving.
 
     In order for this to work, the following must be running:
         IPFS Daemon: `ipfs daemon`
-        The lotion app: `node app_trivial.js` from the application root directory
+        The lotion app: `node app_trivial.js` from /Non-Trivial-Chain/on-chain-component
 
     """
 
