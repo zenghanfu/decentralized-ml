@@ -9,7 +9,7 @@ from core.scheduler             import DMLScheduler
 from core.configuration         import ConfigurationManager
 from tests.testing_utils        import make_initialize_job, make_model_json
 from tests.testing_utils        import make_serialized_job, serialize_job
-from core.utils.enums           import RawEventTypes
+from core.utils.enums           import RawEventTypes, JobTypes
 
 
 config_manager = ConfigurationManager()
@@ -17,10 +17,10 @@ config_manager.bootstrap(
     config_filepath='tests/artifacts/communication_manager/configuration.ini'
 )
 
-def test_communication_manager_can_initialize_and_train_model():
+def test_communication_manager_can_initialize_and_train_and_average_model():
     """
     Integration test that checks that the Communication Manager can initialize,
-    train, (and soon communicate) a model.
+    train, (and soon communicate) a model, and average a model.
 
     NOTE: This should be renamed after the COMM PR.
 
@@ -48,17 +48,39 @@ def test_communication_manager_can_initialize_and_train_model():
     (15) Communication Manager receives DMLResult for communication job from
          Scheduler
     (16) Communication Manager gives DMLResult to Optimizer
-    (17) TO BE DEFINED (COMM PR.)
+    (17) Optimizer tells the Communication Manager to do nothing
+
+    NOTE: Next steps are specific to Averaging PR
+    (18) Communication Manager receives new weights from Blockchain Gateway
+    (19) Communication Manager gives new weights to Optimizer
+    (20) Optimizer tells Communication Manager to schedule an averaging job
+    (21) Communication Manager schedules averaging job
+    (22) Communication Manager receives DMLResult for averaging job from
+        Scheduler
+    (23) Communication Manager gives DMLResult to Optimizer
+    (24) Optimizer updates its weights to initialized model and increments listen_iterations
+    (25) Optimizer tells Communication Manager to do nothing
+    (26) Communication Manager receives new weights from Blockchain Gateway
+    (27) Communication Manager gives new weights to Optimizer
+    (28) Optimizer tells Communication Manager to schedule an averaging job
+    (29) Communication Manager schedules averaging job
+    (30) Communication Manager receives DMLResult for averaging job from
+        Scheduler
+    (31) Communication Manager gives DMLResult to Optimizer
+    (32) Optimizer updates its weights to initialized model and increments listen_iterations
+    (33) Optimizer tells Communication Manager to schedule a training job since it's heard enough
     """
     communication_manager = CommunicationManager()
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager)
+    true_job = make_initialize_job(make_model_json())
+    serialized_job = serialize_job(true_job)
     new_session_event = {
         "key": None,
         "content": {
             "optimizer_params": {},
-            "serialized_job": make_serialized_job()
+            "serialized_job": serialized_job
         }
     }
     communication_manager.inform(
@@ -72,6 +94,34 @@ def test_communication_manager_can_initialize_and_train_model():
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
     assert len(scheduler.processed) == 2
+    while len(scheduler.processed) == 2:
+        scheduler.runners_run_next_jobs()
+        time.sleep(0.1)
+    assert len(scheduler.processed) == 3
+    from core.utils.keras import serialize_weights
+    new_weights_event = {
+        "key": RawEventTypes.NEW_WEIGHTS.name,
+        "content": {
+            "weights": serialize_weights(communication_manager.optimizer.job.weights)
+        }
+    }
+    communication_manager.inform(
+        RawEventTypes.NEW_INFO.name,
+        new_weights_event
+    )
+    while len(scheduler.processed) == 3:
+        scheduler.runners_run_next_jobs()
+        time.sleep(0.1)
+    assert communication_manager.optimizer.listen_iterations == 1
+    communication_manager.inform(
+        RawEventTypes.NEW_INFO.name,
+        new_weights_event
+    )
+    while len(scheduler.processed) == 4:
+        scheduler.runners_run_next_jobs()
+        time.sleep(0.1)
+    assert communication_manager.optimizer.listen_iterations == 0
+    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name
 
 
 def test_communication_manager_can_be_initialized():
@@ -159,56 +209,6 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
     assert optimizer_job.framework_type == true_job.framework_type
     assert optimizer_job.hyperparams == true_job.hyperparams
     assert optimizer_job.label_column_name == true_job.label_column_name
-
-def test_communication_manager_can_request_average():
-    """
-    Ensures that upon hearing new info, the Communication Manager will end up
-    scheduling an averaging job, and that that averaging job will be correct.
-    """
-    communication_manager = CommunicationManager()
-    scheduler = DMLScheduler(config_manager)
-    communication_manager.configure(scheduler)
-    scheduler.configure(communication_manager)
-    true_job = make_initialize_job(make_model_json())
-    serialized_job = serialize_job(true_job)
-    new_session_event = {
-        "key": None,
-        "content": {
-            "optimizer_params": {},
-            "serialized_job": serialized_job
-        }
-    }
-    communication_manager.inform(
-        RawEventTypes.NEW_SESSION.name,
-        new_session_event
-    )
-    while len(scheduler.processed) == 0:
-        scheduler.runners_run_next_jobs()
-        time.sleep(0.1)
-    while len(scheduler.processed) == 1:
-        scheduler.runners_run_next_jobs()
-        time.sleep(0.1)
-    assert len(scheduler.processed) == 2
-    from core.utils.keras import serialize_weights
-    new_weights_event = {
-        "key": RawEventTypes.NEW_WEIGHTS.name,
-        "content": {
-            "weights": serialize_weights(communication_manager.optimizer.job.weights)
-        }
-    }
-    communication_manager.inform(
-        RawEventTypes.NEW_INFO.name,
-        new_weights_event
-    )
-    while len(scheduler.processed) == 2:
-        scheduler.runners_run_next_jobs()
-        time.sleep(0.1)
-    assert len(scheduler.processed) == 3
-    for _ in range(10):
-        if len(scheduler.processed) == 3:
-            scheduler.runners_run_next_jobs()
-            time.sleep(0.1)
-    assert communication_manager.optimizer.listen_iterations == 1
 
 # NOTE: The following are tests that we will implement soon.
 
