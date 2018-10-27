@@ -10,6 +10,7 @@ from core.configuration         import ConfigurationManager
 from tests.testing_utils        import make_initialize_job, make_model_json
 from tests.testing_utils        import make_serialized_job, serialize_job
 from core.utils.enums           import RawEventTypes, JobTypes
+from core.utils.keras import serialize_weights
 
 
 config_manager = ConfigurationManager()
@@ -98,7 +99,6 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
     assert len(scheduler.processed) == 3
-    from core.utils.keras import serialize_weights
     new_weights_event = {
         "key": RawEventTypes.NEW_WEIGHTS.name,
         "content": {

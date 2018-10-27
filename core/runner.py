@@ -3,6 +3,7 @@ import random
 import uuid
 import time
 import os
+import numpy as np
 
 from core.configuration import ConfigurationManager
 from custom.keras import model_from_serialized, get_optimizer
@@ -10,11 +11,9 @@ from data.iterators import count_datapoints
 from data.iterators import create_random_train_dataset_iterator
 from data.iterators import create_random_test_dataset_iterator
 from core.utils.keras import train_keras_model, validate_keras_model
-from core.utils.keras import serialize_weights
+from core.utils.keras import serialize_weights, deserialize_weights
 from core.utils.dmlresult import DMLResult
 from core.utils.enums import JobTypes, callback_handler_no_default
-# from core.utils.federated_learning_utils import federated_averaging
-#       NOTE: Commented until the next PR is done.
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -225,7 +224,6 @@ class DMLRunner(object):
         return results
 
     def _average(self, job):
-        from core.utils.keras import deserialize_weights
         # get current weights
         current_weights = job.weights
         # get sum of omegas already averaged
@@ -249,7 +247,6 @@ class DMLRunner(object):
         return result
     
     def weighted_running_avg(self, sigma_x_i_div_w_i, x_n, sigma_w_i, w_n):
-        import numpy as np
         sigma_x_i = np.multiply(sigma_w_i, sigma_x_i_div_w_i)
         cma_n_plus_one = np.divide(np.add(x_n, sigma_x_i), np.add(w_n,sigma_w_i))
         return cma_n_plus_one

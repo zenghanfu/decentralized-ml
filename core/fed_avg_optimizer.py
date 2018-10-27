@@ -163,7 +163,6 @@ class FederatedAveragingOptimizer(object):
 		TODO: Will be updated with Averaging PR
 		"""
 		self.job.job_type = JobTypes.JOB_AVG.name
-		from core.utils.keras import deserialize_weights
 		self.job.set_weights(self.job.weights, payload["content"]["weights"], 1, 1)
 		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
 
