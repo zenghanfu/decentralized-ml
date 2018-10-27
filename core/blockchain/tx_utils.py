@@ -21,7 +21,7 @@ class Transaction(object):
         self.value = value
 
     def get_tx(self) -> dict:
-        print(self.key)
-        print(self.value)
-        print('jjj', {TxEnum.KEY.name: [self.key], TxEnum.CONTENT.name: self.value})
+        # print(self.key)
+        # print(self.value)
+        # print('jjj', {TxEnum.KEY.name: [self.key], TxEnum.CONTENT.name: self.value})
         return {TxEnum.KEY.name: self.key, TxEnum.CONTENT.name: self.value}

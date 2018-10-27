@@ -112,13 +112,12 @@ def get_global_state(host: str, port: int, timeout: int) -> object:
     tx_receipt = None
     while time.time() < timeout:
         try:
-            retval = make_getter_call(host, port).json()
+            tx_receipt = make_getter_call(host, port).json()
             break
         except (UnboundLocalError, requests.exceptions.ConnectionError) as e:
             logging.info("HTTP GET error, got: {0}".format(e))
             continue
-    logging.info("global state: {}".format(retval))
-    return retval
+    return tx_receipt
 
 def getter(client: object, key: str, local_state: list, port: int, timeout: int,
             host: str = '127.0.0.1') -> list:
@@ -127,7 +126,7 @@ def getter(client: object, key: str, local_state: list, port: int, timeout: int,
     object from IPFS. This pulls from the global state but DOES NOT update the
     local state
     """
-    logging.info("Getting from blockchain...")
+    # logging.info("Getting from blockchain...")
     new_state = local_state + update_diffs(get_global_state(host, port, timeout),
                                             local_state)
     return download(client, key, new_state)
