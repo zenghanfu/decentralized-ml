@@ -5,6 +5,7 @@ from core.configuration                 import ConfigurationManager
 from core.blockchain.blockchain_gateway import BlockchainGateway
 from core.utils.enums                   import RawEventTypes
 from core.blockchain.tx_utils           import TxEnum
+from core.blockchain.blockchain_utils   import setter
 
 
 @pytest.fixture	
@@ -14,6 +15,7 @@ def config_manager():
         config_filepath='tests/artifacts/blockchain/configuration.ini'	
     )	
     return config_manager	
+
 @pytest.fixture	
 def communication_manager():		
     class MockCommunicationManager:
@@ -24,6 +26,7 @@ def communication_manager():
             self.dummy1 = dummy1
             self.dummy2 = dummy2
     return MockCommunicationManager()
+
 @pytest.fixture	
 def blockchain_gateway(config_manager, communication_manager):	
     blockchain_gateway = BlockchainGateway()
@@ -45,9 +48,7 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
     
     blockchain_gateway = BlockchainGateway()
     blockchain_gateway.configure(config_manager, communication_manager)
-    developer = BlockchainGateway()
-    developer.configure(config_manager, communication_manager)
-    tx_receipt = developer.broadcast_decentralized_learning({"model": "hello world"})
+    tx_receipt = setter(blockchain_gateway.client, None, blockchain_gateway.port, ({"model": "hello world"}))
     assert tx_receipt
     blockchain_gateway.listen_decentralized_learning()
     # at this point we should listen for decentralized learning, hear it, then
