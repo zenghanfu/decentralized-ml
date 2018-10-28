@@ -34,9 +34,15 @@ def test_blockchain_gateway_can_be_initialized(config_manager, communication_man
     blockchain_gateway = BlockchainGateway()
     assert blockchain_gateway is not None	
 
-
-# TODO: This will be implemented once we figure out how.	
 def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, communication_manager):
+    """
+    Uses Mock Communication Manager to ensure that the Gateway
+    can listen for decentralized learning.
+
+    This test has some problems since the loop of events is incomplete.
+    # NOTE: Should be updated after Averaging/Communication PRs are merged
+    """
+    
     blockchain_gateway = BlockchainGateway()
     blockchain_gateway.configure(config_manager, communication_manager)
     developer = BlockchainGateway()
@@ -48,6 +54,8 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
     # start listening for new weights and hear them as well
     assert communication_manager.dummy1 == RawEventTypes.NEW_INFO.name, "Wrong dummy1"
     assert communication_manager.dummy2.get(TxEnum.CONTENT.name)
+
+# TODO: This will be implemented once we figure out how.	
 # def test_handle_decentralized_learning(blockchain_gateway):	
 #     """To be implemented."""	
 #     pass	
