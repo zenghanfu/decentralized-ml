@@ -74,7 +74,7 @@ class BlockchainGateway(object):
 
     def handle_decentralized_learning_owner(self, model_config: object) -> None:
         """
-        Return weights after training terminates2
+        Return weights after training terminates
         TODO: add condition to check if training for specific model terminated
         """
         final_weights = getter(self.client, model_config, self.state, self.port, self.timeout)

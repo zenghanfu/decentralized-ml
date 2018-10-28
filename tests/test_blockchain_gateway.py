@@ -4,6 +4,8 @@ from core.configuration import ConfigurationManager
 from core.blockchain.blockchain_gateway import BlockchainGateway
 from core.utils.enums import RawEventTypes
 from core.blockchain.tx_utils import TxEnum
+
+
 @pytest.fixture	
 def config_manager():	
     config_manager = ConfigurationManager()	
