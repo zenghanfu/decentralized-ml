@@ -47,7 +47,7 @@ class DMLRunner(object):
         self.data_count = count_datapoints(self.dataset_path)
         self.JOB_CALLBACKS = {
             JobTypes.JOB_TRAIN.name: self._train,
-            JobTypes.JOB_INIT.name: self._initialize_model,
+            JobTypes.JOB_INIT.name: self._initialize,
             JobTypes.JOB_VAL.name: self._validate,
             JobTypes.JOB_AVG.name: self._average,
             JobTypes.JOB_COMM.name: self._communicate
@@ -201,7 +201,7 @@ class DMLRunner(object):
         )
         return results
 
-    def _initialize_model(self, job):
+    def _initialize(self, job):
         """
         Initializes and returns a DMLResult with the model
         weights as specified in the model.
@@ -224,18 +224,11 @@ class DMLRunner(object):
         return results
 
     def _average(self, job):
-        # get current weights
-        current_weights = job.weights
-        # get sum of omegas already averaged
-        sigma_omega = job.sigma_omega
-        # get omega
-        omega = job.omega
-        # get weights to be averaged
-        new_weights = job.new_weights
-        # deserialize
-        deserialized_new_weights = deserialize_weights(new_weights)
-        # pass these into average
-        averaged_weights = self.weighted_running_avg(current_weights, deserialized_new_weights, sigma_omega, omega)
+        """
+        Average the weights in the job weighted by their omegas.
+        """
+        deserialized_new_weights = deserialize_weights(job.new_weights)
+        averaged_weights = self.weighted_running_avg(job.weights, deserialized_new_weights, job.sigma_omega, job.omega)
         result = DMLResult(
             status='successful',
             job=job,
@@ -247,11 +240,19 @@ class DMLRunner(object):
         return result
     
     def weighted_running_avg(self, sigma_x_i_div_w_i, x_n, sigma_w_i, w_n):
+        """
+        Computes a weighting running average.
+        W_n is the weight of datapoint n.
+        X_n is a datapoint.
+        """
         sigma_x_i = np.multiply(sigma_w_i, sigma_x_i_div_w_i)
         cma_n_plus_one = np.divide(np.add(x_n, sigma_x_i), np.add(w_n,sigma_w_i))
         return cma_n_plus_one
 
     def _communicate(self, job):
+        """
+        NOTE: This is here ONLY to get past the first Communication Manager integration test.
+        """
         result = DMLResult(
             status='successful',
             job=job,
