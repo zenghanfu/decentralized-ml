@@ -4,6 +4,7 @@ import uuid
 import time
 import os
 import ipfsapi
+import numpy as np
 
 from core.configuration import ConfigurationManager
 from custom.keras import model_from_serialized, get_optimizer
@@ -11,13 +12,10 @@ from data.iterators import count_datapoints
 from data.iterators import create_random_train_dataset_iterator
 from data.iterators import create_random_test_dataset_iterator
 from core.utils.keras import train_keras_model, validate_keras_model
-from core.utils.keras import serialize_weights
+from core.utils.keras import serialize_weights, deserialize_weights
 from core.utils.dmlresult import DMLResult
 from core.utils.enums import JobTypes, callback_handler_no_default
 from core.blockchain.blockchain_utils import setter
-# from core.utils.federated_learning_utils import federated_averaging
-#       NOTE: Commented until the next PR is done.
-
 
 logging.basicConfig(level=logging.DEBUG,
                     format='[Runner] %(asctime)s %(levelname)s %(message)s')
@@ -50,8 +48,9 @@ class DMLRunner(object):
         self.data_count = count_datapoints(self.dataset_path)
         self.JOB_CALLBACKS = {
             JobTypes.JOB_TRAIN.name: self._train,
-            JobTypes.JOB_INIT.name: self._initialize_model,
+            JobTypes.JOB_INIT.name: self._initialize,
             JobTypes.JOB_VAL.name: self._validate,
+            JobTypes.JOB_AVG.name: self._average,
             JobTypes.JOB_COMM.name: self._communicate,
         }
 
@@ -123,7 +122,8 @@ class DMLRunner(object):
 
         # Train the model the right way based on the model type.
         assert job.framework_type in ['keras'], \
-            "Model type '{0}' is not supported.".format(framework_type)
+            "Model type '{0}' is not supported.".format(job.framework_type)
+
         if job.framework_type == 'keras':
             new_weights_path, train_stats = train_keras_model(
                 job.serialized_model,
@@ -203,7 +203,7 @@ class DMLRunner(object):
         )
         return results
 
-    def _initialize_model(self, job):
+    def _initialize(self, job):
         """
         Initializes and returns a DMLResult with the model
         weights as specified in the model.
@@ -244,3 +244,28 @@ class DMLRunner(object):
             error_message="",
         )
         return results
+    def _average(self, job):
+        """
+        Average the weights in the job weighted by their omegas.
+        """
+        deserialized_new_weights = deserialize_weights(job.new_weights)
+        averaged_weights = self.weighted_running_avg(job.weights, deserialized_new_weights, job.sigma_omega, job.omega)
+        result = DMLResult(
+            status='successful',
+            job=job,
+            results={
+                'weights': averaged_weights,
+            },
+            error_message="",
+        )
+        return result
+    
+    def weighted_running_avg(self, sigma_x_i_div_w_i, x_n, sigma_w_i, w_n):
+        """
+        Computes a weighting running average.
+        W_n is the weight of datapoint n.
+        X_n is a datapoint.
+        """
+        sigma_x_i = np.multiply(sigma_w_i, sigma_x_i_div_w_i)
+        cma_n_plus_one = np.divide(np.add(x_n, sigma_x_i), np.add(w_n,sigma_w_i))
+        return cma_n_plus_one

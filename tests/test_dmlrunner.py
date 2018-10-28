@@ -5,7 +5,7 @@ import numpy as np
 
 from core.runner                import DMLRunner
 from core.configuration         import ConfigurationManager
-from core.utils.keras           import serialize_weights
+from core.utils.keras           import serialize_weights, deserialize_weights
 from core.utils.enums           import JobTypes
 from tests.testing_utils        import make_initialize_job, make_model_json, make_communicate_job
 from tests.testing_utils        import make_train_job, make_validate_job, make_hyperparams
@@ -78,3 +78,22 @@ def test_dmlrunner_communicate_job_returns_receipt(config_manager):
     result = runner.run_job(communicate_job)
     results = result.results
     assert results['receipt']
+
+def test_dmlrunner_initialize_job_weights_can_be_serialized(config_manager):
+    model_json = make_model_json()
+    runner = DMLRunner(config_manager)
+    initialize_job = make_initialize_job(model_json)
+    initial_weights = runner.run_job(initialize_job).results['weights']
+    same_weights = deserialize_weights(serialize_weights(initial_weights))
+    assert(np.shape(same_weights) == np.shape(initial_weights))
+    assert all([np.count_nonzero(arr)==0 for arr in np.subtract(same_weights, initial_weights)])
+
+def test_dmlrunner_averaging_weights(config_manager):
+    model_json = make_model_json()
+    runner = DMLRunner(config_manager)
+    initialize_job = make_initialize_job(model_json)
+    initial_weights = runner.run_job(initialize_job).results['weights']
+    serialized_weights = serialize_weights(initial_weights)
+    initialize_job.set_weights(initial_weights, serialized_weights, 1, 1)
+    averaged_weights = runner._average(initialize_job).results['weights']
+    assert all([np.count_nonzero(arr)==0 for arr in np.subtract(averaged_weights, initial_weights)])
