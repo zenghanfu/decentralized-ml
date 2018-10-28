@@ -68,6 +68,7 @@ class FederatedAveragingOptimizer(object):
 		self.LEVEL_2_INFO_CALLBACKS = {
 			MessageEventTypes.NEW_WEIGHTS.name: self._received_new_weights,
 		}
+
 		logging.info("Optimizer has been set up!")
 
 	def kickoff(self):

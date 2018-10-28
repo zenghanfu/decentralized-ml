@@ -16,6 +16,7 @@ from core.utils.dmlresult import DMLResult
 from core.utils.enums import JobTypes, callback_handler_no_default
 
 
+
 logging.basicConfig(level=logging.DEBUG,
                     format='[Runner] %(asctime)s %(levelname)s %(message)s')
 
@@ -51,6 +52,7 @@ class DMLRunner(object):
             JobTypes.JOB_VAL.name: self._validate,
             JobTypes.JOB_AVG.name: self._average,
             JobTypes.JOB_COMM.name: self._communicate
+
         }
 
     def run_job(self, job):
@@ -122,6 +124,7 @@ class DMLRunner(object):
         # Train the model the right way based on the model type.
         assert job.framework_type in ['keras'], \
             "Model type '{0}' is not supported.".format(job.framework_type)
+
         if job.framework_type == 'keras':
             new_weights_path, train_stats = train_keras_model(
                 job.serialized_model,

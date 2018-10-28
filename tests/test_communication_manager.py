@@ -70,6 +70,7 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
     (31) Communication Manager gives DMLResult to Optimizer
     (32) Optimizer updates its weights to initialized model and increments listen_iterations
     (33) Optimizer tells Communication Manager to schedule a training job since it's heard enough
+
     """
     communication_manager = CommunicationManager()
     scheduler = DMLScheduler(config_manager)
@@ -122,7 +123,6 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
         time.sleep(0.1)
     assert communication_manager.optimizer.listen_iterations == 0
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name
-
 
 def test_communication_manager_can_be_initialized():
     """
