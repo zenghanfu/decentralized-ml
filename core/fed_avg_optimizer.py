@@ -1,6 +1,6 @@
 import logging
 
-from core.utils.enums 		import ActionableEventTypes, RawEventTypes
+from core.utils.enums 		import ActionableEventTypes, RawEventTypes, MessageEventTypes
 from core.utils.enums 		import JobTypes, callback_handler_no_default
 from core.utils.dmljob 		import deserialize_job
 from core.utils.keras 		import serialize_weights
@@ -66,7 +66,7 @@ class FederatedAveragingOptimizer(object):
 			# TODO: Support COMM and AVG soon.
 		}
 		self.LEVEL_2_INFO_CALLBACKS = {
-			RawEventTypes.NEW_WEIGHTS.name: self._received_new_weights,
+			MessageEventTypes.NEW_WEIGHTS.name: self._received_new_weights,
 		}
 		logging.info("Optimizer has been set up!")
 

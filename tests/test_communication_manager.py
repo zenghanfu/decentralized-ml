@@ -9,7 +9,7 @@ from core.scheduler             import DMLScheduler
 from core.configuration         import ConfigurationManager
 from tests.testing_utils        import make_initialize_job, make_model_json
 from tests.testing_utils        import make_serialized_job, serialize_job
-from core.utils.enums           import RawEventTypes, JobTypes
+from core.utils.enums           import RawEventTypes, JobTypes, MessageEventTypes
 from core.utils.keras import serialize_weights
 
 
@@ -100,7 +100,7 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
         time.sleep(0.1)
     assert len(scheduler.processed) == 3
     new_weights_event = {
-        "key": RawEventTypes.NEW_WEIGHTS.name,
+        "key": MessageEventTypes.NEW_WEIGHTS.name,
         "content": {
             "weights": serialize_weights(communication_manager.optimizer.job.weights)
         }

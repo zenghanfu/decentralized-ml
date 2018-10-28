@@ -26,6 +26,19 @@ class JobTypes(Enum):
     JOB_AVG = "AVERAGE"
     JOB_COMM = "COMMUNICATE"
 
+class MessageEventTypes(Enum):
+    """
+    The different Blockchain Message Types used throughout the service.
+
+    The types can be the following:
+
+        NEW_WEIGHTS: New weights from another node.
+
+        TERMINATE: Terminate this session command.
+    """
+    NEW_WEIGHTS = "NEW_WEIGHTS"
+    TERMINATE = "TERMINATE"
+
 class RawEventTypes(Enum):
     """
     Event types that are not "actionable" by the service in its current form
@@ -34,22 +47,8 @@ class RawEventTypes(Enum):
 
     The different Raw Event Types are the following:
 
-        #+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
-        #+ NOTE: Following 3 will be replaced by MessageTypes in Gateway PR. +#
-        #+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
-
         NEW_SESSION: Information received from the blockchain to create a new
         DML Session.
-
-        NEW_WEIGHTS: Information received from the blockchain saying there are
-        new weights available from the network.
-
-        TERMINATE: Information received from the blockchain instructing the
-        service to terminate a DML Session.
-
-        #+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
-        #+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
-        #+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
 
         JOB_DONE: Information received from the Scheduler about a job that was
         just completed (in the form of a DML Result).
@@ -58,8 +57,6 @@ class RawEventTypes(Enum):
         from the blockchain.
     """
     NEW_SESSION = "NEW_SESSION"
-    NEW_WEIGHTS = "NEW_WEIGHTS"
-    TERMINATE = "TERMINATE"
     JOB_DONE = "JOB_DONE"
     NEW_INFO = "NEW_INFO"
 
@@ -75,9 +72,8 @@ class ActionableEventTypes(Enum):
         TERMINATE: Instruction to the Communication Manager to terminate a
         DML Session.
 
-        NOTHING: Don't do anything; result of asking Optimizer for what to do 
-        after averaging, when the Optimizer hasn't seen all the other weights
-
+        NOTHING: Do nothing; received when new weights were sent to the Optimizer
+        or a Communication Job was successfuly received.
     """
     SCHEDULE_JOB = "SCHEDULE_JOB"
     TERMINATE = "TERMINATE"
