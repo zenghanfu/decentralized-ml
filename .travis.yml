@@ -4,8 +4,5 @@ python:
 cache: pip
 install:
   - pip install -r requirements.txt
-  # - npm install
 script:
-  - ipfs daemon
-  # - node app_trivial.js
   - pytest tests
