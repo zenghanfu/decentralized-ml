@@ -1,9 +1,10 @@
 import tests.context	
 import pytest	
-from core.configuration import ConfigurationManager	
+
+from core.configuration                 import ConfigurationManager	
 from core.blockchain.blockchain_gateway import BlockchainGateway
-from core.utils.enums import RawEventTypes
-from core.blockchain.tx_utils import TxEnum
+from core.utils.enums                   import RawEventTypes
+from core.blockchain.tx_utils           import TxEnum
 
 
 @pytest.fixture	
@@ -40,7 +41,8 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
     blockchain_gateway.configure(config_manager, communication_manager)
     developer = BlockchainGateway()
     developer.configure(config_manager, communication_manager)
-    # developer.broadcast_decentralized_learning({"model": "hello world"})
+    tx_receipt = developer.broadcast_decentralized_learning({"model": "hello world"})
+    assert tx_receipt
     blockchain_gateway.listen_decentralized_learning()
     # at this point we should listen for decentralized learning, hear it, then
     # start listening for new weights and hear them as well
