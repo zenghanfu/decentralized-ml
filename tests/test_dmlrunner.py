@@ -7,7 +7,7 @@ from core.runner                import DMLRunner
 from core.configuration         import ConfigurationManager
 from core.utils.keras           import serialize_weights
 from core.utils.enums           import JobTypes
-from tests.testing_utils        import make_initialize_job, make_model_json
+from tests.testing_utils        import make_initialize_job, make_model_json, make_communicate_job
 from tests.testing_utils        import make_train_job, make_validate_job, make_hyperparams
 
 
@@ -69,3 +69,12 @@ def test_dmlrunner_validate_job_returns_stats(config_manager):
     val_stats = results['val_stats']
     assert result.job.job_type is JobTypes.JOB_VAL.name
     assert type(val_stats) == dict
+
+def test_dmlrunner_communicate_job_returns_receipt(config_manager):
+    runner = DMLRunner(config_manager)
+    initialization_job = make_initialize_job(make_model_json())
+    result = runner.run_job(initialization_job)
+    communicate_job = make_communicate_job("test", result.results['weights'])
+    result = runner.run_job(communicate_job)
+    results = result.results
+    assert results['receipt']

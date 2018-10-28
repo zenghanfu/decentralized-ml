@@ -6,6 +6,14 @@ from core.utils.dmljob          import DMLJob, serialize_job
 def make_dataset_path():
     return 'datasets/mnist'
 
+def make_communicate_job(key, weights):
+    communicate_job = DMLJob(
+        JobTypes.JOB_COMM.name,
+        key,
+        "keras"
+    )
+    return communicate_job
+
 def make_model_json():
     m = KerasPerceptron(is_training=True)
     model_architecture = m.model.to_json()

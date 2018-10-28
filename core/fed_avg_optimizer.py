@@ -60,6 +60,7 @@ class FederatedAveragingOptimizer(object):
 		self.LEVEL2_JOB_DONE_CALLBACKS = {
 			JobTypes.JOB_TRAIN.name: self._done_training,
 			JobTypes.JOB_INIT.name: self._done_initializing,
+			JobTypes.JOB_COMM.name: self._done_communicating,
 			# TODO: Support COMM and AVG soon.
 		}
 		logging.info("Optimizer has been set up!")
@@ -119,6 +120,11 @@ class FederatedAveragingOptimizer(object):
 		self.job.job_type = JobTypes.JOB_COMM.name
 		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
 
+	def _done_communicating(self, dmlresult_obj):
+		"""
+		"LEVEL 2" Callback for a Communication job.
+		"""
+		return ActionableEventTypes.NOTHING.name, self.job
 	# Handlers for new information from the gateway
 	# TODO: This will come with the Gateway PR.
 

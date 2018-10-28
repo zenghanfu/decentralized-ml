@@ -3,6 +3,7 @@ import random
 import uuid
 import time
 import os
+import ipfsapi
 
 from core.configuration import ConfigurationManager
 from custom.keras import model_from_serialized, get_optimizer
@@ -13,6 +14,7 @@ from core.utils.keras import train_keras_model, validate_keras_model
 from core.utils.keras import serialize_weights
 from core.utils.dmlresult import DMLResult
 from core.utils.enums import JobTypes, callback_handler_no_default
+from core.blockchain.blockchain_utils import setter
 # from core.utils.federated_learning_utils import federated_averaging
 #       NOTE: Commented until the next PR is done.
 
@@ -50,6 +52,7 @@ class DMLRunner(object):
             JobTypes.JOB_TRAIN.name: self._train,
             JobTypes.JOB_INIT.name: self._initialize_model,
             JobTypes.JOB_VAL.name: self._validate,
+            JobTypes.JOB_COMM.name: self._communicate,
         }
 
     def run_job(self, job):
@@ -220,4 +223,24 @@ class DMLRunner(object):
                     },
                     error_message="",
                 )
+        return results
+
+    def _communicate(self, job):
+        """
+        Communicates a message to the blockchain.
+        """
+        tx_receipt = setter(
+            client = ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), config.getint('BLOCKCHAIN', 'ipfs_port')),
+            key = job.key,
+            port = config.getint('BLOCKCHAIN', 'http_port'),
+            value = job.weights,
+        )
+        results = DMLResult(
+            status='successful',
+            job=job,
+            results={
+                'receipt': tx_receipt,
+            },
+            error_message="",
+        )
         return results
