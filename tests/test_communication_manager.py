@@ -89,17 +89,28 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
         RawEventTypes.NEW_SESSION.name,
         new_session_event
     )
-    while len(scheduler.processed) == 0:
+    timeout = time.time() + 3
+    while time.time() < timeout and len(scheduler.processed) == 0:
+        # initialization job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
-    while len(scheduler.processed) == 1:
+    timeout = time.time() + 3
+    while time.time() < timeout and len(scheduler.processed) == 1:
+        # training job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
     assert len(scheduler.processed) == 2
-    while len(scheduler.processed) == 2:
+    timeout = time.time() + 3
+    while time.time() < timeout and len(scheduler.processed) == 2:
+        # communication job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
     assert len(scheduler.processed) == 3
+    # now the communication manager should be idle
+    scheduler.runners_run_next_jobs()
+    time.sleep(0.1)
+    assert len(scheduler.processed) == 3
+    # now it should hear some new weights
     new_weights_event = {
         "key": MessageEventTypes.NEW_WEIGHTS.name,
         "content": {
@@ -110,19 +121,31 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
         RawEventTypes.NEW_INFO.name,
         new_weights_event
     )
-    while len(scheduler.processed) == 3:
+    timeout = time.time() + 3
+    while time.time() < timeout and len(scheduler.processed) == 3:
+        # averaging job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
+    # we've only heard one set of new weights so our listen_iters are 1
     assert communication_manager.optimizer.listen_iterations == 1
+    # now the communication manager should be idle
+    scheduler.runners_run_next_jobs()
+    time.sleep(0.1)
+    # now it should hear more new weights
     communication_manager.inform(
         RawEventTypes.NEW_INFO.name,
         new_weights_event
     )
-    while len(scheduler.processed) == 4:
+    timeout = time.time() + 3
+    while time.time() < timeout and len(scheduler.processed) == 4:
+        # second averaging job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
+    # we've heard both sets of new weights so our listen_iters are 2
     assert communication_manager.optimizer.listen_iterations == 0
+    # now we should be ready to train
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name
+    # and that completes one local round of federated learning!
 
 def test_communication_manager_can_be_initialized():
     """
