@@ -97,18 +97,21 @@ def test_federated_learning():
     scheduler.start_cron(period_in_mins=0.01)
     scheduler_2.start_cron(period_in_mins=0.01)
     blockchain_gateway.listen_decentralized_learning()
+    # time.sleep(20)
     blockchain_gateway_2.listen_decentralized_learning()
+    time.sleep(20)
+    # blockchain_gateway.listen_new_weights()
+    # blockchain_gateway_2.listen_new_weights()
+    # blockchain_gateway.listen_new_weights()
+    # blockchain_gateway_2.listen_new_weights()
+    # blockchain_gateway.listen_new_weights()
+    # blockchain_gateway_2.listen_new_weights()
     # time.sleep(5)
-    blockchain_gateway.listen_new_weights()
-    blockchain_gateway_2.listen_new_weights()
-    blockchain_gateway.listen_new_weights()
-    blockchain_gateway_2.listen_new_weights()
-    blockchain_gateway.listen_new_weights()
-    blockchain_gateway_2.listen_new_weights()
-    # time.sleep(5)
-    scheduler.stop_cron()
-    scheduler_2.stop_cron()
-    assert False
+    # scheduler.stop_cron()
+    # scheduler_2.stop_cron()
+    # MAKE SURE THAT FEDERATED LEARNING IS DONE!
+    assert communication_manager.optimizer is None
+    assert communication_manager_2.optimizer is None
     # # (1) Communication Manager receives the packet it's going to receive from BlockchainGateway
     
     # timeout = time.time() + 3

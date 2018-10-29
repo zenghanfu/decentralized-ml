@@ -40,7 +40,9 @@ class DMLJob(object):
         self.weights = weights
         self.hyperparams = hyperparams
         self.label_column_name = label_column_name
-
+        self.omega = None
+        self.sigma_omega = None
+        self.new_weights = None
 
     def set_weights(self, current_weights, new_weights, omega, sigma_omega):
         """

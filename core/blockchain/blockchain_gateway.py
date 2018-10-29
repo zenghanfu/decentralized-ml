@@ -64,7 +64,7 @@ class BlockchainGateway(object):
         self.state = global_state_wrapper.get(TxEnum.MESSAGES.name, {})
 
     async def start_listening(self, event_filter: Callable,
-                                timeout=5) -> list:
+                                timeout=25) -> list:
         """
         Starts an indefinite loop that listens for a specific event to occur.
         Called in `filter_set`. Filters are some condition that must be
@@ -130,7 +130,7 @@ class BlockchainGateway(object):
         self.communication_manager.inform("NEW_INFO",
                                             args)
         # TODO: Uncomment below line as soon as we can get Travis to work with these tests
-        # self.listen_new_weights()
+        self.listen_new_weights()
 
     def handle_terminate(self) -> None:
         self.communication_manager.inform("TERMINATE", None)
