@@ -153,7 +153,7 @@ class FederatedAveragingOptimizer(object):
 		"""
 		# TODO: Some assert on the payload, like in `_handle_job_done()`.
 		callback = callback_handler_no_default(
-			payload[TxEnum.KEY.name],
+			payload[TxEnum.KEY.value],
 			self.LEVEL_2_INFO_CALLBACKS
 		)
 		return callback(payload)
@@ -166,7 +166,7 @@ class FederatedAveragingOptimizer(object):
 		TODO: Will be updated with Averaging PR
 		"""
 		self.job.job_type = JobTypes.JOB_AVG.name
-		self.job.set_weights(self.job.weights, payload[TxEnum.CONTENT.name]["weights"], 1, 1)
+		self.job.set_weights(self.job.weights, payload[TxEnum.CONTENT.value]["weights"], 1, 1)
 		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
 
 	# def _received_termination(self, payload):
