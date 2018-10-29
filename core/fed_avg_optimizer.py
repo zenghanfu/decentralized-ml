@@ -5,7 +5,7 @@ from core.utils.enums 		import JobTypes, callback_handler_no_default
 from core.utils.dmljob 		import deserialize_job
 from core.utils.keras 		import serialize_weights
 from core.utils.dmlresult 	import DMLResult
-
+from core.blockchain.tx_utils import TxEnum
 
 logging.basicConfig(level=logging.DEBUG,
 	format='[FedAvgOpt] %(asctime)s %(levelname)s %(message)s')
@@ -123,6 +123,7 @@ class FederatedAveragingOptimizer(object):
 		new_weights = dmlresult_obj.results.get('weights')
 		self._update_weights(new_weights)
 		self.job.job_type = JobTypes.JOB_COMM.name
+		self.job.set_key("test")
 		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
 
 	def _done_communicating(self, dmlresult_obj):
@@ -152,7 +153,7 @@ class FederatedAveragingOptimizer(object):
 		"""
 		# TODO: Some assert on the payload, like in `_handle_job_done()`.
 		callback = callback_handler_no_default(
-			payload["key"],
+			payload[TxEnum.KEY.name],
 			self.LEVEL_2_INFO_CALLBACKS
 		)
 		return callback(payload)
@@ -165,7 +166,7 @@ class FederatedAveragingOptimizer(object):
 		TODO: Will be updated with Averaging PR
 		"""
 		self.job.job_type = JobTypes.JOB_AVG.name
-		self.job.set_weights(self.job.weights, payload["content"]["weights"], 1, 1)
+		self.job.set_weights(self.job.weights, payload[TxEnum.CONTENT.name]["weights"], 1, 1)
 		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
 
 	# def _received_termination(self, payload):

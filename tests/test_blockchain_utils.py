@@ -2,7 +2,7 @@ import tests.context
 import ipfsapi
 import pytest
 
-from core.blockchain.blockchain_utils import *
+from core.blockchain.blockchain_utils import getter, setter
 from core.configuration import ConfigurationManager
 
 

@@ -6,7 +6,7 @@ from typing import Callable
 
 from core.blockchain.blockchain_utils   import setter, getter, filter_diffs
 from core.blockchain.blockchain_utils   import get_global_state, ipfs_to_content
-from core.utils.event_types             import RawEventTypes
+from core.utils.event_types             import RawEventTypes, MessageEventTypes
 from core.blockchain.tx_utils           import TxEnum
 
 
@@ -58,7 +58,7 @@ class BlockchainGateway(object):
     ##########################################################################
 
     async def start_listening(self, event_filter: Callable,
-                                timeout=10) -> list:
+                                timeout=15) -> list:
         """
         Starts an indefinite loop that listens for a specific event to occur.
         Called in `filter_set`. Filters are some condition that must be
@@ -101,7 +101,7 @@ class BlockchainGateway(object):
         key = tx.get(TxEnum.KEY.name)
         value = tx.get(TxEnum.CONTENT.name)
         # args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
-        self.communication_manager.inform(RawEventTypes.NEW_SESSION.name, value)
+        self.communication_manager.inform(RawEventTypes.NEW_SESSION.name, ipfs_to_content(self.client, value))
         self.listen_new_weights()
 
     def handle_new_weights(self, tx: dict):
@@ -116,7 +116,8 @@ class BlockchainGateway(object):
         logging.info("handling new weights...{}".format(tx))
         key = tx.get(TxEnum.KEY.name)
         value = tx.get(TxEnum.CONTENT.name)
-        args = {TxEnum.KEY.name: key, TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
+        args = {TxEnum.KEY.name: MessageEventTypes.NEW_WEIGHTS.name, 
+                TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
         # TODO: Put into in-memory datastore.
         self.communication_manager.inform("NEW_INFO",
                                             args)

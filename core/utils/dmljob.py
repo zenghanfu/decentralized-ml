@@ -52,6 +52,12 @@ class DMLJob(object):
         self.omega = omega
         self.sigma_omega = sigma_omega
 
+    def set_key(self, key):
+        """
+        TODO: Remove this as well as the above method, and see how to change.
+        """
+        self.key = key
+
 def serialize_job(dmljob_obj):
     """
     Serializes a DML Job object into a dictionary.

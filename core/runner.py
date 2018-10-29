@@ -14,6 +14,7 @@ from data.iterators import create_random_test_dataset_iterator
 from core.utils.keras import train_keras_model, validate_keras_model
 from core.utils.keras import serialize_weights, deserialize_weights
 from core.utils.dmlresult import DMLResult
+from core.utils.dmljob import serialize_job
 from core.utils.enums import JobTypes, callback_handler_no_default
 from core.blockchain.blockchain_utils import setter
 
@@ -45,6 +46,7 @@ class DMLRunner(object):
         self.train_dataset_path = os.path.join(self.dataset_path, 'train.csv')
         self.test_dataset_path = os.path.join(self.dataset_path, 'test.csv')
         self.config = dict(config.items("RUNNER"))
+        self.blockchain_config = config
         self.data_count = count_datapoints(self.dataset_path)
         self.JOB_CALLBACKS = {
             JobTypes.JOB_TRAIN.name: self._train,
@@ -230,10 +232,11 @@ class DMLRunner(object):
         Communicates a message to the blockchain.
         """
         tx_receipt = setter(
-            client = ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), config.getint('BLOCKCHAIN', 'ipfs_port')),
+            client = ipfsapi.connect(self.blockchain_config.get('BLOCKCHAIN', 'host'), 
+                        self.blockchain_config.getint('BLOCKCHAIN', 'ipfs_port')),
             key = job.key,
-            port = config.getint('BLOCKCHAIN', 'http_port'),
-            value = job.weights,
+            port = self.blockchain_config.getint('BLOCKCHAIN', 'http_port'),
+            value = serialize_job(job),
         )
         results = DMLResult(
             status='successful',
@@ -244,6 +247,7 @@ class DMLRunner(object):
             error_message="",
         )
         return results
+
     def _average(self, job):
         """
         Average the weights in the job weighted by their omegas.
