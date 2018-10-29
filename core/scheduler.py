@@ -62,7 +62,7 @@ class DMLScheduler(object):
 		Add a job to the queue.
 		"""
 		assert type(dml_job) is DMLJob, "Job is not of type DMLJob."
-		logging.info("Scheduling job...")
+		logging.info("Scheduling job...{}".format(dml_job.job_type))
 		self.queue.append(dml_job)
 
 	def start_cron(self, period_in_mins=None):
@@ -145,6 +145,7 @@ class DMLScheduler(object):
 				job_to_run.num_tries_left = self.max_tries
 				# self.current_jobs[i] = runner.run_job(job_to_run)
 				self.current_jobs[i] = job_to_run
+				logging.info("Running job for real...")
 				self.current_results[i] = self.pool.apply_async(
 					runner.run_job,
 					(job_to_run,)
@@ -154,7 +155,7 @@ class DMLScheduler(object):
 		"""
 		Trigger above method every period.
 		"""
-		logging.info("Running cron job...")
+		# logging.info("Attempting to run next cron job...")
 		self.runners_run_next_jobs()
 		if not self.event.is_set():
 			Timer(

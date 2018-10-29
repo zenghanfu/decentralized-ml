@@ -99,6 +99,7 @@ class FederatedAveragingOptimizer(object):
 			dmlresult_obj.job.job_type,
 			self.LEVEL2_JOB_DONE_CALLBACKS
 		)
+		logging.info("Job completed: {}".format(dmlresult_obj.job.job_type))
 		return callback(dmlresult_obj)
 
 	def _done_initializing(self, dmlresult_obj):
@@ -136,6 +137,7 @@ class FederatedAveragingOptimizer(object):
 		self._update_weights(new_weights)
 		self.listen_iterations += 1
 		if self.listen_iterations >= self.listen_bound:
+			logging.info("DONE WITH ONE ROUND OF FEDERATED LEARNING!")
 			self.job.job_type = JobTypes.JOB_TRAIN.name
 			self.listen_iterations = 0
 			return ActionableEventTypes.SCHEDULE_JOB.name, self.job
@@ -153,7 +155,7 @@ class FederatedAveragingOptimizer(object):
 		"""
 		# TODO: Some assert on the payload, like in `_handle_job_done()`.
 		callback = callback_handler_no_default(
-			payload[TxEnum.KEY.value],
+			payload[TxEnum.KEY.name],
 			self.LEVEL_2_INFO_CALLBACKS
 		)
 		return callback(payload)
@@ -165,8 +167,9 @@ class FederatedAveragingOptimizer(object):
 	
 		TODO: Will be updated with Averaging PR
 		"""
+		logging.info("Received new weights!")
 		self.job.job_type = JobTypes.JOB_AVG.name
-		self.job.set_weights(self.job.weights, payload[TxEnum.CONTENT.value]["weights"], 1, 1)
+		self.job.set_weights(self.job.weights, payload[TxEnum.CONTENT.name]["weights"], 1, 1)
 		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
 
 	# def _received_termination(self, payload):

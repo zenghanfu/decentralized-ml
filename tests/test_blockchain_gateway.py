@@ -48,13 +48,12 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
     
     blockchain_gateway = BlockchainGateway()
     blockchain_gateway.configure(config_manager, communication_manager)
-    tx_receipt = setter(blockchain_gateway.client, None, blockchain_gateway.port, ({"model": "hello world"}))
+    tx_receipt = setter(blockchain_gateway.client, None, blockchain_gateway.port, {"model": "hello world"}, True)
     assert tx_receipt
     blockchain_gateway.listen_decentralized_learning()
-    # at this point we should listen for decentralized learning, hear it, then
-    # start listening for new weights and hear them as well
-    assert communication_manager.dummy1 == RawEventTypes.NEW_INFO.name, "Wrong dummy1"
-    assert communication_manager.dummy2.get(TxEnum.CONTENT.name)
+    # at this point we should listen for decentralized learning, hear it, and update our communication manager
+    assert communication_manager.dummy1 == RawEventTypes.NEW_SESSION.name, "Wrong dummy1"
+    assert communication_manager.dummy2 == {"model": "hello world"}, "Wrong dummy2"
 
 # TODO: This will be implemented once we figure out how.	
 # def test_handle_decentralized_learning(blockchain_gateway):	

@@ -72,6 +72,14 @@ def test_federated_learning():
     communication_manager.configure(scheduler)
     blockchain_gateway.configure(config_manager, communication_manager)
     scheduler.configure(communication_manager)
+    # duplicate service
+    communication_manager_2 = CommunicationManager()
+    blockchain_gateway_2 = BlockchainGateway()
+    scheduler_2 = DMLScheduler(config_manager)
+    communication_manager_2.configure(scheduler_2)
+    blockchain_gateway_2.configure(config_manager, communication_manager_2)
+    scheduler_2.configure(communication_manager_2)
+    # set up new session
     json = make_model_json()
     true_job = make_initialize_job(json)
     serialized_job = serialize_job(true_job)
@@ -87,8 +95,19 @@ def test_federated_learning():
     assert tx_receipt
     # (1) Blockchain Gateway listens for decentralized learning
     scheduler.start_cron(period_in_mins=0.01)
+    scheduler_2.start_cron(period_in_mins=0.01)
     blockchain_gateway.listen_decentralized_learning()
+    blockchain_gateway_2.listen_decentralized_learning()
+    # time.sleep(5)
+    blockchain_gateway.listen_new_weights()
+    blockchain_gateway_2.listen_new_weights()
+    blockchain_gateway.listen_new_weights()
+    blockchain_gateway_2.listen_new_weights()
+    blockchain_gateway.listen_new_weights()
+    blockchain_gateway_2.listen_new_weights()
+    # time.sleep(5)
     scheduler.stop_cron()
+    scheduler_2.stop_cron()
     assert False
     # # (1) Communication Manager receives the packet it's going to receive from BlockchainGateway
     

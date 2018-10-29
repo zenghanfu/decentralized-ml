@@ -57,8 +57,14 @@ class BlockchainGateway(object):
     ###                          PROVIDER SECTION                          ###
     ##########################################################################
 
+    def update_local_state(self, global_state_wrapper):
+        """
+        Helper function to update the local state with freshly downloaded global state.
+        """
+        self.state = global_state_wrapper.get(TxEnum.MESSAGES.name, {})
+
     async def start_listening(self, event_filter: Callable,
-                                timeout=15) -> list:
+                                timeout=5) -> list:
         """
         Starts an indefinite loop that listens for a specific event to occur.
         Called in `filter_set`. Filters are some condition that must be
@@ -70,6 +76,7 @@ class BlockchainGateway(object):
         while time.time() < timeout:
             global_state_wrapper = get_global_state(self.host, self.port, self.timeout)
             filtered_diffs = filter_diffs(global_state_wrapper, self.state, event_filter)
+            self.update_local_state(global_state_wrapper)
             if filtered_diffs:
                 return filtered_diffs
             await asyncio.sleep(self.timeout)
@@ -85,9 +92,10 @@ class BlockchainGateway(object):
             filtered_diffs = loop.run_until_complete(
                 self.start_listening(event_filter))
             check = list(map(handler, filtered_diffs))
+        except TypeError as e:
+            logging.info("Listening terminated: {}".format(e))
         finally:
             loop.close()
-        return check
 
     def handle_decentralized_learning_trainer(self, tx: dict) -> None:
         """
@@ -96,7 +104,7 @@ class BlockchainGateway(object):
         The parameters (model weights, model config) will be downloaded 
         and put into the optimizer initially. So the optimizer knows this info.
         """
-        logging.info("handling decentralized learning... {}".format(tx))
+        # logging.info("handling decentralized learning... {}".format(tx))
         assert TxEnum.KEY.name in tx
         key = tx.get(TxEnum.KEY.name)
         value = tx.get(TxEnum.CONTENT.name)
@@ -113,7 +121,7 @@ class BlockchainGateway(object):
         -which should do the moving average.
         """
         # TODO: Upon CommMgr PR being merged, update this with the appropriate args
-        logging.info("handling new weights...{}".format(tx))
+        # logging.info("handling new weights...{}".format(tx))
         key = tx.get(TxEnum.KEY.name)
         value = tx.get(TxEnum.CONTENT.name)
         args = {TxEnum.KEY.name: MessageEventTypes.NEW_WEIGHTS.name, 

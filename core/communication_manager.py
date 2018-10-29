@@ -69,7 +69,7 @@ class CommunicationManager(object):
         node is done training a particular model, to which the Optimizer could
         decide it's time to communicate the new weights to the network.
         """
-        logging.info("Information has been received: {})".format(event_type))
+        logging.info("Information has been received: {}".format(event_type))
         if self.optimizer:
             # We have an active session so we ask the optimizer what to do.
             event_type, payload = self.optimizer.ask(event_type, payload)
@@ -100,7 +100,7 @@ class CommunicationManager(object):
             self.EVENT_TYPE_2_CALLBACK,
         )
         callback(payload)
-        logging.info("Kickoff complete.")
+        # logging.info("Kickoff complete.")
 
     def _schedule_job(self, dmljob_obj):
         """
