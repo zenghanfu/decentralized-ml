@@ -18,7 +18,8 @@ logging.basicConfig(level=logging.DEBUG,
 
 def upload(client: object, value: dict) -> str:
     """
-    Provided any Python object, store it on IPFS and return the hash
+    Provided any Python object, store it on IPFS and then upload the hash that
+    will be uploaded to the blockchain as a value
     """
     # assert TxEnum.KEY.name in value
     # assert TxEnum.CONTENT.name in value

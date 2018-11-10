@@ -6,7 +6,6 @@ from core.utils.dmljob 		import deserialize_job
 from core.utils.keras 		import serialize_weights
 from core.utils.dmlresult 	import DMLResult
 from core.blockchain.tx_utils import TxEnum
-
 logging.basicConfig(level=logging.DEBUG,
 	format='[FedAvgOpt] %(asctime)s %(levelname)s %(message)s')
 

@@ -100,7 +100,7 @@ class CommunicationManager(object):
             self.EVENT_TYPE_2_CALLBACK,
         )
         callback(payload)
-        # logging.info("Kickoff complete.")
+        logging.info("Kickoff complete.")
 
     def _schedule_job(self, dmljob_obj):
         """

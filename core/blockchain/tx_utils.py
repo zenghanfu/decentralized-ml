@@ -4,8 +4,8 @@ class TxEnum(Enum):
     """
     Enum of tx-related constants, e.g. standard keys present in a transaction
     """
-    KEY = "key"
-    CONTENT = "content"
+    KEY = "KEY"
+    CONTENT = "CONTENT"
     MESSAGES = "MESSAGES"
 
 class Transaction(object):

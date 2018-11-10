@@ -67,6 +67,7 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
     (32) Optimizer updates its weights to initialized model and increments listen_iterations
     (33) Optimizer tells Communication Manager to schedule a training job since it's heard enough
 
+    NOTE: Timeout errors can be as a result of Runners repeatedly erroring. Check logs for this.
     """
     communication_manager = CommunicationManager()
     scheduler = DMLScheduler(config_manager)
@@ -85,27 +86,34 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
         RawEventTypes.NEW_SESSION.name,
         new_session_event
     )
+    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_INIT.name, \
+        "Should be ready to init!"
     timeout = time.time() + 3
     while time.time() < timeout and len(scheduler.processed) == 0:
         # initialization job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
+    assert len(scheduler.processed) == 1, "Initialization failed/not completed in time!"
+    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name, \
+        "Should be ready to train!"
     timeout = time.time() + 3
     while time.time() < timeout and len(scheduler.processed) == 1:
         # training job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
-    assert len(scheduler.processed) == 2
+    assert len(scheduler.processed) == 2, "Training failed/not completed in time!"
+    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_COMM.name, \
+        "Should be ready to communicate!"
     timeout = time.time() + 3
     while time.time() < timeout and len(scheduler.processed) == 2:
         # communication job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
-    assert len(scheduler.processed) == 3
+    assert len(scheduler.processed) == 3, "Communication failed/not completed in time!"
     # now the communication manager should be idle
     scheduler.runners_run_next_jobs()
     time.sleep(0.1)
-    assert len(scheduler.processed) == 3
+    assert len(scheduler.processed) == 3, "No job should have been run!"
     # now it should hear some new weights
     new_weights_event = {
         "key": MessageEventTypes.NEW_WEIGHTS.name,
@@ -117,30 +125,40 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
         RawEventTypes.NEW_INFO.name,
         new_weights_event
     )
+    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_AVG.name, \
+        "Should be ready to average!"
     timeout = time.time() + 3
     while time.time() < timeout and len(scheduler.processed) == 3:
         # averaging job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
+    assert len(scheduler.processed) == 4, "Averaging failed/not completed in time!"
     # we've only heard one set of new weights so our listen_iters are 1
-    assert communication_manager.optimizer.listen_iterations == 1
+    assert communication_manager.optimizer.listen_iterations == 1, \
+        "Should have only listened once!"
     # now the communication manager should be idle
     scheduler.runners_run_next_jobs()
     time.sleep(0.1)
+    assert len(scheduler.processed) == 4, "No job should have been run!"
     # now it should hear more new weights
     communication_manager.inform(
         RawEventTypes.NEW_INFO.name,
         new_weights_event
     )
+    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_AVG.name, \
+        "Should be ready to average!"
     timeout = time.time() + 3
     while time.time() < timeout and len(scheduler.processed) == 4:
         # second averaging job
         scheduler.runners_run_next_jobs()
         time.sleep(0.1)
+    assert len(scheduler.processed) == 5, "Averaging failed/not completed in time!"
     # we've heard both sets of new weights so our listen_iters are 2
-    assert communication_manager.optimizer.listen_iterations == 0
+    assert communication_manager.optimizer.listen_iterations == 0, \
+        "Either did not hear anything, or heard too much!"
     # now we should be ready to train
-    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name
+    assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name, \
+        "Should be ready to train!"
     # and that completes one local round of federated learning!
 
 def test_communication_manager_can_be_initialized():

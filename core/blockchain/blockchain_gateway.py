@@ -6,7 +6,7 @@ from typing import Callable
 
 from core.blockchain.blockchain_utils   import setter, getter, filter_diffs
 from core.blockchain.blockchain_utils   import get_global_state, ipfs_to_content
-from core.utils.event_types             import RawEventTypes, MessageEventTypes
+from core.utils.event_types             import RawEventTypes
 from core.blockchain.tx_utils           import TxEnum
 
 
@@ -104,7 +104,7 @@ class BlockchainGateway(object):
         The parameters (model weights, model config) will be downloaded 
         and put into the optimizer initially. So the optimizer knows this info.
         """
-        # logging.info("handling decentralized learning... {}".format(tx))
+        logging.info("handling decentralized learning... {}".format(tx))
         assert TxEnum.KEY.name in tx
         key = tx.get(TxEnum.KEY.name)
         value = tx.get(TxEnum.CONTENT.name)
@@ -121,7 +121,7 @@ class BlockchainGateway(object):
         -which should do the moving average.
         """
         # TODO: Upon CommMgr PR being merged, update this with the appropriate args
-        # logging.info("handling new weights...{}".format(tx))
+        logging.info("handling new weights...{}".format(tx))
         key = tx.get(TxEnum.KEY.name)
         value = tx.get(TxEnum.CONTENT.name)
         args = {TxEnum.KEY.name: MessageEventTypes.NEW_WEIGHTS.name, 
