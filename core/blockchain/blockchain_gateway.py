@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from threading import Event, Timer
 import ipfsapi
@@ -9,7 +8,6 @@ from core.blockchain.blockchain_utils   import filter_diffs
 from core.blockchain.blockchain_utils   import get_global_state, ipfs_to_content
 from core.utils.enums                   import RawEventTypes, MessageEventTypes
 from core.blockchain.tx_utils           import TxEnum
-from asgiref.sync                       import sync_to_async, async_to_sync
 
 logging.basicConfig(level=logging.DEBUG,
     format='[BlockchainGateway] %(message)s')
