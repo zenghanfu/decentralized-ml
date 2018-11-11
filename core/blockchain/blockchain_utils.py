@@ -7,7 +7,6 @@ from typing import Callable
 from core.blockchain.tx_utils import TxEnum, Transaction
 
 
-# TODO: does this need to be here?
 logging.basicConfig(level=logging.DEBUG,
     format='[BlockchainUtils] %(message)s')
 
@@ -33,8 +32,10 @@ def download(client: object, key: str, state: list) -> list:
     TODO: implement a better way to parse through state list
     """
     relevant_txs = list(
-        map(lambda tx: ipfs_to_content(client, tx.get(TxEnum.CONTENT.name)),
-        filter(lambda tx: tx.get(TxEnum.KEY.name) == key, state)))
+        map(lambda tx: 
+                ipfs_to_content(client, tx.get(TxEnum.CONTENT.name)),
+        filter(lambda tx: 
+                tx.get(TxEnum.KEY.name) == key, state)))
     return relevant_txs
 
 def ipfs_to_content(client: object, ipfs_hash: str) -> object:
@@ -125,7 +126,6 @@ def getter(client: object, key: str, local_state: list, port: int, timeout: int,
     object from IPFS. This pulls from the global state but DOES NOT update the
     local state
     """
-    # logging.info("Getting from blockchain...")
     new_state = local_state + update_diffs(get_global_state(host, port, timeout),
                                             local_state)
     return download(client, key, new_state)

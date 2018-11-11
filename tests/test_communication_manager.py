@@ -23,7 +23,7 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
     Integration test that checks that the Communication Manager can initialize,
     train, (and soon communicate) a model, and average a model.
 
-    NOTE: This should be renamed after the COMM PR.
+    Uses communication_manager.inform() instead of Blockchain Gateway for listening.
 
     This is everything that happens in this test:
 

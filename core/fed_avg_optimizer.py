@@ -51,13 +51,14 @@ class FederatedAveragingOptimizer(object):
 		serialized_job = initialization_payload.get('serialized_job')
 		self.job = deserialize_job(serialized_job)
 		optimizer_params = initialization_payload.get('optimizer_params')
-		self.listen_iterations = optimizer_params.get('listen_iterations', 0)
-		self.listen_bound = optimizer_params.get('listen_bound', 2)
-		self.total_iterations = optimizer_params.get('total_iterations', 0)
-		self.total_bound = optimizer_params.get('total_bound', 2)
+		self.listen_iterations = 0
+		self.listen_bound = optimizer_params.get('listen_bound')
+		self.total_iterations = 0
+		self.total_bound = optimizer_params.get('total_bound')
 		self.LEVEL1_CALLBACKS = {
 			RawEventTypes.JOB_DONE.name: self._handle_job_done,
 			RawEventTypes.NEW_INFO.name: self._handle_new_info,
+			RawEventTypes.NEW_SESSION.name: self._do_nothing,
 		}
 		self.LEVEL2_JOB_DONE_CALLBACKS = {
 			JobTypes.JOB_TRAIN.name: self._done_training,
@@ -67,6 +68,7 @@ class FederatedAveragingOptimizer(object):
 		}
 		self.LEVEL_2_INFO_CALLBACKS = {
 			MessageEventTypes.NEW_WEIGHTS.name: self._received_new_weights,
+			MessageEventTypes.TERMINATE.name: self._received_termination,
 		}
 
 		logging.info("Optimizer has been set up!")
@@ -182,12 +184,12 @@ class FederatedAveragingOptimizer(object):
 		self.job.new_weights = payload[TxEnum.CONTENT.name]["weights"]
 		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
 
-	# def _received_termination(self, payload):
-	# 	"""
-	# 	"LEVEL 2" Callback for a termination message received by the service
-	# 	from the blockchain.
-	# 	"""
-	# 	return ActionableEventTypes.TERMINATE.name, None
+	def _received_termination(self, payload):
+		"""
+		"LEVEL 2" Callback for a termination message received by the service
+		from the blockchain.
+		"""
+		return ActionableEventTypes.TERMINATE.name, None
 
 	# Helper functions
 
@@ -198,3 +200,9 @@ class FederatedAveragingOptimizer(object):
 		with the correct weights. Mutates, does not return anything.
 		"""
 		self.job.weights = weights
+
+	def _do_nothing(self, payload):
+		"""
+		Do nothing in case this optimizer heard a new session.
+		"""
+		return ActionableEventTypes.NOTHING.name, None

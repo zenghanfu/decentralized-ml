@@ -86,7 +86,7 @@ def test_federated_learning():
     new_session_event = {
         "key": None,
         "content": {
-            "optimizer_params": {},
+            "optimizer_params": {"listen_bound": 1, "total_bound": 2},
             "serialized_job": serialized_job
         }
     }
@@ -95,12 +95,12 @@ def test_federated_learning():
     assert tx_receipt
     # (1) Blockchain Gateway listens for decentralized learning
     scheduler.start_cron(period_in_mins=0.01)
-    scheduler_2.start_cron(period_in_mins=0.01)
+    # scheduler_2.start_cron(period_in_mins=0.01)
     blockchain_gateway.listen_decentralized_learning()
     # time.sleep(20)
-    blockchain_gateway_2.listen_decentralized_learning()
+    # blockchain_gateway_2.listen_decentralized_learning()
     time.sleep(20)
-    # blockchain_gateway.listen_new_weights()
+    blockchain_gateway.listen_new_weights()
     # blockchain_gateway_2.listen_new_weights()
     # blockchain_gateway.listen_new_weights()
     # blockchain_gateway_2.listen_new_weights()

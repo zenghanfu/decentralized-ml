@@ -4,7 +4,7 @@ from core.configuration import ConfigurationManager
 from core.dataset_manager import DatasetManager
 from core.communication_manager import CommunicationManager
 from core.scheduler import DMLScheduler
-
+from core.blockchain.blockchain_gateway import BlockchainGateway
 
 def bootstrap():
     """
@@ -45,6 +45,8 @@ def bootstrap():
 
     # 5. Set up Blockchain Gateway and start listening on a new thread.
     # TODO: The Blockchain Client to be implemented.
+    blockchain_gateway = BlockchainGateway()
+    blockchain_gateway.listen_decentralized_learning()
 
     # 6. Configure the Communication Manager with the components it talks to.
     communication_manager.configure(
