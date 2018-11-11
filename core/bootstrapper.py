@@ -43,15 +43,21 @@ def bootstrap():
     )
     t1.start()
 
-    # 5. Set up Blockchain Gateway and start listening on a new thread.
-    # TODO: The Blockchain Client to be implemented.
-    blockchain_gateway = BlockchainGateway()
-    blockchain_gateway.listen_decentralized_learning()
-
-    # 6. Configure the Communication Manager with the components it talks to.
+    # 5. Configure the Communication Manager with the components it talks to.
     communication_manager.configure(
         scheduler=scheduler
     )
+
+    # 6. Set up Blockchain Gateway and start listening on a new thread.
+    blockchain_gateway = BlockchainGateway()
+    blockchain_gateway.configure(config_manager=config_manager,
+        communication_manager=communication_manager)
+    t2 = threading.Thread(
+        target=blockchain_gateway.start_cron,
+        args=(0.05,),
+        daemon=False,
+    )
+    t2.start()
 
     # 7. Wait for the threads to end.
     # TODO: Need to make it work as a daemon.

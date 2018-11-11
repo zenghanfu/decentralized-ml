@@ -77,14 +77,13 @@ def test_dmlscheduler_cron():
     """
     scheduler.reset()
     model_json = make_model_json()
-    n = 1
-    for _ in range(n):
+    m = 1
+    for _ in range(m):
         initialize_job = make_initialize_job(model_json)
         scheduler.add_job(initialize_job)
     scheduler.start_cron(period_in_mins = 0.01)
     time.sleep(2)
-    scheduler.stop_cron()
-    assert len(scheduler.processed) == n
+    assert len(scheduler.processed) == m
     while scheduler.processed:
         output = scheduler.processed.pop(0)
         initial_weights = output.results['weights']
@@ -95,7 +94,6 @@ def test_dmlscheduler_cron():
     for _ in range(n):
         train_job = make_train_job(model_json, initial_weights, hyperparams)
         scheduler.add_job(train_job)
-    scheduler.start_cron(period_in_mins = 0.01)
-    time.sleep(14)
+    time.sleep(4)
     scheduler.stop_cron()
     assert len(scheduler.processed) == n

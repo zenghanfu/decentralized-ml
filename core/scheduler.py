@@ -112,11 +112,9 @@ class DMLScheduler(object):
 
 		for i, runner in enumerate(self.runners):
 			# Check if there's any finished jobs and process them.
-			logging.info("Looking for results")
 			if self.current_results[i]:
 				#If the job results are available
 				finished_results = self.current_results[i].get()
-				logging.info("Found a result!")
 				if finished_results.status == 'successful':
 					# If the job finished successfully...
 					self.processed.append(finished_results)
@@ -129,7 +127,6 @@ class DMLScheduler(object):
 					)
 				elif finished_results.status == 'failed':
 					# If some error occurred
-					logging.info("Job failed!!!")
 					job_to_run = self.current_jobs[i]
 					job_to_run.num_tries_left -= 1
 					if job_to_run.num_tries_left > 0:
@@ -140,14 +137,11 @@ class DMLScheduler(object):
 						logging.error(finished_results.error_message)
 						self.current_jobs[i] = None
 						self.current_results[i] = None
-			else:
-				logging.info("No result found")
 			# Check if there's any queued jobs and schedule them.
 			if self.queue:
 				# If there's something to be scheduled...
 				job_to_run = self.queue.popleft()
 				job_to_run.num_tries_left = self.max_tries
-				# self.current_jobs[i] = runner.run_job(job_to_run)
 				self.current_jobs[i] = job_to_run
 				logging.info("Running job for real...")
 				self.current_results[i] = self.pool.apply_async(
@@ -159,7 +153,6 @@ class DMLScheduler(object):
 		"""
 		Trigger above method every period.
 		"""
-		# logging.info("Attempting to run next cron job...")
 		self.runners_run_next_jobs()
 		if not self.event.is_set():
 			Timer(
