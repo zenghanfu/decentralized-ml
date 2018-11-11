@@ -161,8 +161,9 @@ class FederatedAveragingOptimizer(object):
 	def _handle_new_info(self, payload):
 		"""
 		"LEVEL 1" Callback to handle new information from the blockchain.
-	
-		NOTE: The payload structure is to be defined.
+		Payload structure should be:
+		{TxEnum.KEY.name: <e.g. NEW_WEIGHTS>, 
+		TxEnum.CONTENT.name: <e.g. weights>}	
 		"""
 		# TODO: Some assert on the payload, like in `_handle_job_done()`.
 		callback = callback_handler_no_default(
@@ -174,9 +175,7 @@ class FederatedAveragingOptimizer(object):
 	def _received_new_weights(self, payload):
 		"""
 		"LEVEL 2" Callback for new weights received by the service from the
-		blockchain.
-	
-		TODO: Will be updated with Averaging PR
+		blockchain.	
 		"""
 		logging.info("Received new weights!")
 		self.job.job_type = JobTypes.JOB_AVG.name

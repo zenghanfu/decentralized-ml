@@ -54,7 +54,7 @@ def test_blockchain_utils_setter_simple(config, ipfs_client):
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
-    assert get_val_after == get_val_before + ["'World!'"]
+    assert get_val_after == get_val_before + [test_value]
 
 def test_blockchain_utils_setter_multiple_values(config, ipfs_client):
     get_val_before = getter(
@@ -83,4 +83,4 @@ def test_blockchain_utils_setter_multiple_values(config, ipfs_client):
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
-    assert get_val_after == get_val_before + ["'World!'", "'World!'"]
+    assert get_val_after == get_val_before + [test_value, test_value]

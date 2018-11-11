@@ -136,7 +136,7 @@ class BlockchainGateway(object):
                     TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
             # TODO: Put into in-memory datastore.
             self.communication_manager.inform(
-                MessageEventTypes.NEW_WEIGHTS.name,args)
+                RawEventTypes.NEW_INFO.name,args)
             self._listen_new_weights()
         def handler_manual(tx: dict) -> None:
             # Doesn't call itself again
@@ -146,7 +146,7 @@ class BlockchainGateway(object):
                     TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
             # TODO: Put into in-memory datastore.
             self.communication_manager.inform(
-                MessageEventTypes.NEW_WEIGHTS.name,args)
+                RawEventTypes.NEW_INFO.name,args)
         return handler_manual if manual else handler
 
     def _handle_terminate(self) -> None:

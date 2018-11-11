@@ -8,7 +8,7 @@ import numpy as np
 
 from core.scheduler             import DMLScheduler
 from core.configuration         import ConfigurationManager
-from tests.testing_utils        import make_initialize_job, make_model_json
+from tests.testing_utils        import make_initialize_job, make_model_json, make_train_job, make_hyperparams
 
 
 config_manager = ConfigurationManager()
@@ -77,16 +77,25 @@ def test_dmlscheduler_cron():
     """
     scheduler.reset()
     model_json = make_model_json()
-    for _ in range(3):
-        model_json = make_model_json()
+    n = 1
+    for _ in range(n):
         initialize_job = make_initialize_job(model_json)
         scheduler.add_job(initialize_job)
-    scheduler.start_cron(period_in_mins = 0.05)
-    time.sleep(5)
+    scheduler.start_cron(period_in_mins = 0.01)
+    time.sleep(2)
     scheduler.stop_cron()
-    assert len(scheduler.processed) == 3
+    assert len(scheduler.processed) == n
     while scheduler.processed:
         output = scheduler.processed.pop(0)
         initial_weights = output.results['weights']
         assert type(initial_weights) == list
         assert type(initial_weights[0]) == np.ndarray
+    n = 6
+    hyperparams = make_hyperparams()
+    for _ in range(n):
+        train_job = make_train_job(model_json, initial_weights, hyperparams)
+        scheduler.add_job(train_job)
+    scheduler.start_cron(period_in_mins = 0.01)
+    time.sleep(14)
+    scheduler.stop_cron()
+    assert len(scheduler.processed) == n

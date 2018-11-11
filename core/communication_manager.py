@@ -1,10 +1,10 @@
 import logging
 
-from core.utils.enums       import RawEventTypes, ActionableEventTypes
-from core.utils.enums       import callback_handler_no_default
-from core.fed_avg_optimizer import FederatedAveragingOptimizer
-from core.utils.dmljob      import DMLJob
-
+from core.utils.enums           import RawEventTypes, ActionableEventTypes
+from core.utils.enums           import callback_handler_no_default
+from core.fed_avg_optimizer     import FederatedAveragingOptimizer
+from core.utils.dmljob          import DMLJob
+from core.blockchain.tx_utils   import TxEnum
 
 logging.basicConfig(level=logging.DEBUG,
     format='[CommunicationManager] %(asctime)s %(levelname)s %(message)s')
@@ -91,7 +91,7 @@ class CommunicationManager(object):
         # only considering the 'FederatedAveragingOptimizer' for now.
         # TODO: We need to incorporate session id's when we're ready.
         logging.info("New optimizer session is being set up...")
-        initialization_payload = payload.get('content')
+        initialization_payload = payload.get(TxEnum.CONTENT.name)
         self.optimizer = FederatedAveragingOptimizer(initialization_payload)
         logging.info("Optimizer session is set! Now doing kickoff...")
         event_type, payload = self.optimizer.kickoff()

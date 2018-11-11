@@ -10,15 +10,27 @@ from core.configuration         import ConfigurationManager
 from tests.testing_utils        import make_initialize_job, make_model_json
 from tests.testing_utils        import make_serialized_job, serialize_job
 from core.utils.enums           import RawEventTypes, JobTypes, MessageEventTypes
-from core.utils.keras import serialize_weights
-
+from core.utils.keras           import serialize_weights
+from core.blockchain.tx_utils   import TxEnum
 
 config_manager = ConfigurationManager()
 config_manager.bootstrap(
     config_filepath='tests/artifacts/communication_manager/configuration.ini'
 )
 
-def test_communication_manager_can_initialize_and_train_and_average_model():
+@pytest.fixture
+def new_session_event():
+    serialized_job = make_serialized_job()
+    new_session_event = {
+        TxEnum.KEY.name: None,
+        TxEnum.CONTENT.name: {
+            "optimizer_params": {"listen_bound": 2, "total_bound": 2},
+            "serialized_job": serialized_job
+        }
+    }
+    return new_session_event
+
+def test_communication_manager_can_initialize_and_train_and_average_model(new_session_event):
     """
     Integration test that checks that the Communication Manager can initialize,
     train, (and soon communicate) a model, and average a model.
@@ -73,15 +85,6 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager)
-    true_job = make_initialize_job(make_model_json())
-    serialized_job = serialize_job(true_job)
-    new_session_event = {
-        "key": None,
-        "content": {
-            "optimizer_params": {},
-            "serialized_job": serialized_job
-        }
-    }
     communication_manager.inform(
         RawEventTypes.NEW_SESSION.name,
         new_session_event
@@ -116,8 +119,8 @@ def test_communication_manager_can_initialize_and_train_and_average_model():
     assert len(scheduler.processed) == 3, "No job should have been run!"
     # now it should hear some new weights
     new_weights_event = {
-        "key": MessageEventTypes.NEW_WEIGHTS.name,
-        "content": {
+        TxEnum.KEY.name: MessageEventTypes.NEW_WEIGHTS.name,
+        TxEnum.CONTENT.name: {
             "weights": serialize_weights(communication_manager.optimizer.job.weights)
         }
     }
@@ -169,20 +172,12 @@ def test_communication_manager_can_be_initialized():
     assert communication_manager
 
 
-def test_communication_manager_fails_if_not_configured():
+def test_communication_manager_fails_if_not_configured(new_session_event):
     """
     Ensures that Communication Manager won't be able to function if it's not
     configured.
     """
     communication_manager = CommunicationManager()
-    serialized_job = make_serialized_job()
-    new_session_event = {
-        "key": None,
-        "content": {
-            "optimizer_params": {},
-            "serialized_job": serialized_job
-        }
-    }
     try:
         communication_manager.inform(
             RawEventTypes.NEW_SESSION.name,
@@ -193,7 +188,7 @@ def test_communication_manager_fails_if_not_configured():
         assert str(e) == "Communication Manager needs to be configured first!"
 
 
-def test_communication_manager_creates_new_sessions():
+def test_communication_manager_creates_new_sessions(new_session_event):
     """
     Ensures that upon receiving an initialization job, the Communication Manager
     will make an optimizer.
@@ -202,14 +197,6 @@ def test_communication_manager_creates_new_sessions():
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager)
-    serialized_job = make_serialized_job()
-    new_session_event = {
-        "key": None,
-        "content": {
-            "optimizer_params": {},
-            "serialized_job": serialized_job
-        }
-    }
     communication_manager.inform(
         RawEventTypes.NEW_SESSION.name,
         new_session_event
@@ -229,8 +216,8 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
     true_job = make_initialize_job(make_model_json())
     serialized_job = serialize_job(true_job)
     new_session_event = {
-        "key": None,
-        "content": {
+        TxEnum.KEY.name: None,
+        TxEnum.CONTENT.name: {
             "optimizer_params": {},
             "serialized_job": serialized_job
         }
