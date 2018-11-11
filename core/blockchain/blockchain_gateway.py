@@ -4,10 +4,9 @@ import ipfsapi
 import time
 from typing import Callable, Tuple
 
-from core.blockchain.blockchain_utils   import filter_diffs
+from core.blockchain.blockchain_utils   import filter_diffs, TxEnum
 from core.blockchain.blockchain_utils   import get_global_state, ipfs_to_content
 from core.utils.enums                   import RawEventTypes, MessageEventTypes
-from core.blockchain.tx_utils           import TxEnum
 
 
 logging.basicConfig(level=logging.DEBUG,
