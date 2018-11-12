@@ -4,9 +4,10 @@ import ipfsapi
 import time
 from typing import Callable, Tuple
 
-from core.blockchain.blockchain_utils   import filter_diffs, TxEnum
-from core.blockchain.blockchain_utils   import get_global_state, ipfs_to_content
+from core.blockchain.blockchain_utils   import (filter_diffs, TxEnum,
+                                                get_global_state, ipfs_to_content)
 from core.utils.enums                   import RawEventTypes, MessageEventTypes
+
 
 logging.basicConfig(level=logging.DEBUG,
     format='[BlockchainGateway] %(message)s')
@@ -43,7 +44,11 @@ class BlockchainGateway(object):
         self.ipfs_port = config.getint("BLOCKCHAIN", "ipfs_port")
         self.port = config.getint("BLOCKCHAIN", "http_port")
         self.timeout = config.getint("BLOCKCHAIN", "timeout")
-        self.client = ipfsapi.connect(self.host, self.ipfs_port)
+        try:
+            self.client = ipfsapi.connect(self.host, self.ipfs_port)
+        except Exception as e:
+            logging.info(str(e))
+            raise(e)
 
     # Public methods for CRON
     

@@ -24,6 +24,7 @@ def test_dmlrunner_initialize_job_returns_list_of_nparray(config_manager):
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(model_json)
     result = runner.run_job(initialize_job)
+    assert result.status == 'successful'
     results = result.results
     initial_weights = results['weights']
     assert result.job.job_type is JobTypes.JOB_INIT.name
@@ -36,9 +37,13 @@ def test_dmlrunner_train_job_returns_weights_omega_and_stats(config_manager):
     hyperparams = make_hyperparams()
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(model_json)
+    initialize_job.hyperparams['epochs'] = 10
+    initialize_job.hyperparams['batch_size'] = 128
+    initialize_job.hyperparams['split'] = .05
     initial_weights = runner.run_job(initialize_job).results['weights']
     train_job = make_train_job(model_json, initial_weights, hyperparams)
     result = runner.run_job(train_job)
+    assert result.status == 'successful'
     results = result.results
     new_weights = results['weights']
     omega = results['omega']
@@ -58,6 +63,7 @@ def test_dmlrunner_validate_job_returns_stats(config_manager):
     initial_weights = runner.run_job(initialize_job).results['weights']
     train_job = make_train_job(model_json, initial_weights, hyperparams)
     result = runner.run_job(train_job)
+    assert result.status == 'successful'
     results = result.results
     new_weights = results['weights']
     omega = results['omega']
@@ -65,6 +71,7 @@ def test_dmlrunner_validate_job_returns_stats(config_manager):
     hyperparams['split'] = 1 - hyperparams['split']
     validate_job = make_validate_job(model_json, new_weights, hyperparams)
     result = runner.run_job(validate_job)
+    assert result.status == 'successful'
     results = result.results
     val_stats = results['val_stats']
     assert result.job.job_type is JobTypes.JOB_VAL.name
@@ -74,6 +81,7 @@ def test_dmlrunner_communicate_job_returns_receipt(config_manager):
     runner = DMLRunner(config_manager)
     initialization_job = make_initialize_job(make_model_json())
     result = runner.run_job(initialization_job)
+    assert result.status == 'successful'
     communicate_job = make_communicate_job("test", result.results['weights'])
     result = runner.run_job(communicate_job)
     results = result.results

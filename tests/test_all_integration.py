@@ -22,6 +22,11 @@ config_manager.bootstrap(
 
 @pytest.fixture
 def new_session_event():
+    initialize_job = make_initialize_job(make_model_json())
+    initialize_job.hyperparams['epochs'] = 10
+    initialize_job.hyperparams['batch_size'] = 128
+    initialize_job.hyperparams['split'] = .96
+    serialized_job = serialize_job(initialize_job)
     serialized_job = make_serialized_job()
     new_session_event = {
         TxEnum.KEY.name: None,

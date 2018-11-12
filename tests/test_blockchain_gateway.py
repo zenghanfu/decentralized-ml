@@ -57,7 +57,7 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
 
 # TODO: This will be implemented once we figure out how.	
 # def test_handle_decentralized_learning(blockchain_gateway):	
-#     """To be implemented."""	
+#     """To be implemented."""
 #     pass	
 # def test_listen_new_weights(blockchain_gateway):	
 #     """To be implemented."""	

@@ -81,7 +81,10 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager)
     true_job = make_initialize_job(make_model_json())
-    serialized_job = serialize_job(true_job)
+    true_job.hyperparams['epochs'] = 10
+    true_job.hyperparams['batch_size'] = 128
+    true_job.hyperparams['split'] = .05
+    serialized_job = serialize_job(true_job)                
     new_session_event = {
         TxEnum.KEY.name: None,
         TxEnum.CONTENT.name: {
@@ -93,9 +96,12 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
         RawEventTypes.NEW_SESSION.name,
         new_session_event
     )
+    scheduler.runners_run_next_jobs()
+    time.sleep(3)
+    scheduler.runners_run_next_jobs()
     optimizer_job = communication_manager.optimizer.job
-    assert optimizer_job.weights == true_job.weights
-    assert optimizer_job.job_type == true_job.job_type
+    # assert optimizer_job.weights == true_job.weights
+    assert optimizer_job.job_type == JobTypes.JOB_TRAIN.name
     assert optimizer_job.serialized_model == true_job.serialized_model
     assert optimizer_job.framework_type == true_job.framework_type
     assert optimizer_job.hyperparams == true_job.hyperparams
