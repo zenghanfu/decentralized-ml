@@ -69,17 +69,7 @@ def filter_diffs(global_state_wrapper: object, local_state: list,
     """
     new_state = get_diffs(global_state_wrapper.get(TxEnum.MESSAGES.name, {}), 
                             local_state)
-    return list(map(filter(filter_method, new_state)), map_method)
-
-def update_diffs(global_state_wrapper: object, local_state: list,
-                    handler_method: Callable = lambda tx: tx) -> list:
-    """
-    Provided the freshly-downloaded state, call a handler on each transaction
-    that was not already present in our own state and return the new state
-    """
-    new_state = get_diffs(global_state_wrapper.get(TxEnum.MESSAGES.name, {}),
-                            local_state)
-    return list(map(handler_method, new_state))
+    return list(map(map_method, filter(filter_method, new_state)))
 
 ##############################################################################
 ###                                REQUESTS                                ###
@@ -124,7 +114,7 @@ def getter(client: object, key: str, local_state: list, port: int, timeout: int,
     object from IPFS. This pulls from the global state but DOES NOT update the
     local state
     """
-    new_state = local_state + update_diffs(get_global_state(host, port, timeout),
+    new_state = local_state + filter_diffs(get_global_state(host, port, timeout),
                                             local_state)
     return download(client, key, new_state)
 

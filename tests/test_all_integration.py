@@ -25,7 +25,7 @@ def new_session_event():
     initialize_job = make_initialize_job(make_model_json())
     initialize_job.hyperparams['epochs'] = 10
     initialize_job.hyperparams['batch_size'] = 128
-    initialize_job.hyperparams['split'] = .96
+    initialize_job.hyperparams['split'] = 1
     serialized_job = serialize_job(initialize_job)
     serialized_job = make_serialized_job()
     new_session_event = {
@@ -62,7 +62,7 @@ def test_federated_learning_two_clients_automated(new_session_event):
     scheduler_2.start_cron(period_in_mins=0.01)
     blockchain_gateway.start_cron(period_in_mins=0.01)
     blockchain_gateway_2.start_cron(period_in_mins=0.01)
-    time.sleep(20)
+    time.sleep(5)
     scheduler.stop_cron()
     scheduler_2.stop_cron()
     blockchain_gateway.stop_cron()

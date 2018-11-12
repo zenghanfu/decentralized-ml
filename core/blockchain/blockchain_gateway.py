@@ -1,8 +1,9 @@
 import logging
 from threading import Event, Timer
-import ipfsapi
 import time
 from typing import Callable, Tuple
+
+import ipfsapi
 
 from core.blockchain.blockchain_utils   import (filter_diffs, TxEnum,
                                                 get_global_state, ipfs_to_content)
@@ -15,11 +16,9 @@ logging.basicConfig(level=logging.DEBUG,
 class BlockchainGateway(object):
     """
     Blockchain Gateway 
-
     The blockchain gateway listens to the blockchain and notifies the appropriate classes
     inside the Unix Service when there is relevant information ready for them. Follows
     an event-driven programming paradigm using a series of async loops for listening.
-
     In order for this to work, the following must be running:
         IPFS Daemon: `ipfs daemon`
         The lotion app: `node app_trivial.js` from dagora-chain
@@ -47,7 +46,7 @@ class BlockchainGateway(object):
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
         except Exception as e:
-            logging.info(str(e))
+            logging.info("IPFS daemon not started, got: {0}".format(e))
             raise(e)
 
     # Public methods for CRON
