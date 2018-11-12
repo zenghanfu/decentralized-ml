@@ -2,16 +2,14 @@ import logging
 from threading import Event, Timer
 import ipfsapi
 import time
-from typing import Callable
+from typing import Callable, Tuple
 
-from core.blockchain.blockchain_utils   import filter_diffs
+from core.blockchain.blockchain_utils   import filter_diffs, TxEnum
 from core.blockchain.blockchain_utils   import get_global_state, ipfs_to_content
 from core.utils.enums                   import RawEventTypes, MessageEventTypes
-from core.blockchain.tx_utils           import TxEnum
 
 logging.basicConfig(level=logging.DEBUG,
     format='[BlockchainGateway] %(message)s')
-
 
 class BlockchainGateway(object):
     """
@@ -19,7 +17,7 @@ class BlockchainGateway(object):
 
     The blockchain gateway listens to the blockchain and notifies the appropriate classes
     inside the Unix Service when there is relevant information ready for them. Follows
-    an event-driven programming paradigm using a series of asyncio loops for listening.
+    an event-driven programming paradigm using a series of async loops for listening.
 
     In order for this to work, the following must be running:
         IPFS Daemon: `ipfs daemon`
@@ -45,23 +43,44 @@ class BlockchainGateway(object):
         self.ipfs_port = config.getint("BLOCKCHAIN", "ipfs_port")
         self.port = config.getint("BLOCKCHAIN", "http_port")
         self.timeout = config.getint("BLOCKCHAIN", "timeout")
-        self.client = None
-        # try:
         self.client = ipfsapi.connect(self.host, self.ipfs_port)
-        # except Exception as e:
-        #     logging.info("IPFS daemon not started, got: {0}".format(e))
 
-    ##########################################################################
-    ###                          PROVIDER SECTION                          ###
-    ##########################################################################
+    # Public methods for CRON
+    
+    def start_cron(self, period_in_mins: float=0.05) -> None:
+        """
+        CRON method to listen. Runs asynchronously.
+        """
+        logging.info("Starting cron...")
+        self._listen_as_event(period_in_mins, 
+                self._handle_new_session_creation,
+                self._filter_new_session)
+   
+    def stop_cron(self) -> None:
+        """
+        Stop the CRON method.
+        """
+        self.event.set()
+        logging.info("Cron stopped!")
+  
+    def reset(self) -> None:
+        """
+        Reset the gateway
+        """
+        self.event = Event()
+        self.state = []
+        logging.info("Gateway reset!")
+    
+    # Private methods to manage listening
 
-    def _update_local_state(self, global_state_wrapper):
+    def _update_local_state(self, global_state_wrapper: dict) -> None:
         """
         Helper function to update the local state with freshly downloaded global state.
         """
         self.state = global_state_wrapper.get(TxEnum.MESSAGES.name, {})
     
-    def listen(self, callback, event_filter):
+    def _listen(self, callback: Callable, 
+                event_filter: Callable) -> Tuple[Callable, Callable]:
         """
         Fetches the global state.
         Passes the global state to a filter to see all relevant transactions.
@@ -76,28 +95,15 @@ class BlockchainGateway(object):
             return callback(filtered_diffs)
         else:
             return callback, event_filter
-    
-    def start_cron(self, period_in_mins=0.05):
-        """
-        CRON method to listen. Runs asynchronously.
-        """
-        logging.info("Starting cron...")
-        self._listen_as_event(period_in_mins, 
-                self._handle_new_session_creation,
-                self._filter_new_session)
-    
-    def stop_cron(self):
-        """
-        Stop the CRON method.
-        """
-        self.event.set()
-        logging.info("Cron stopped!")
-    
-    def _listen_as_event(self, period_in_mins, callback, event_filter):
+   
+    def _listen_as_event(self, 
+                        period_in_mins: float, 
+                        callback: Callable, 
+                        event_filter: Callable) -> None:
         """
         Trigger above method every period.
         """
-        new_callback, event_filter = self.listen(callback, event_filter)
+        new_callback, event_filter = self._listen(callback, event_filter)
         if not self.event.is_set():
             Timer(
                 period_in_mins * 60,
@@ -105,15 +111,7 @@ class BlockchainGateway(object):
                 [period_in_mins, new_callback, event_filter]
             ).start()
 
-    def reset(self):
-        """
-        Reset the gateway
-        """
-        self.event = Event()
-        self.state = []
-        logging.info("Gateway reset!")
-    
-    def _handle_new_session_creation(self, txs: list):
+    def _handle_new_session_creation(self, txs: list) -> Tuple[Callable, Callable]:
         """
         Maps the handler onto all relevant transactions.
         Then returns the next handler and filter.
@@ -126,19 +124,19 @@ class BlockchainGateway(object):
         list(map(handler, txs))
         return self._handle_new_session_info, self._filter_new_session_info
     
-    def _filter_new_session(self, tx):
+    def _filter_new_session(self, tx: dict) -> bool:
         """
         Only allows new-session transactions through.
         """
         return tx.get(TxEnum.KEY.name) == tx.get(TxEnum.CONTENT.name)
     
-    def _filter_new_session_info(self, tx):
+    def _filter_new_session_info(self, tx: dict) -> bool:
         """
         Only allows new-session-info transactions through.
         """
         return tx.get(TxEnum.KEY.name) != tx.get(TxEnum.CONTENT.name)
     
-    def _handle_new_session_info(self, txs: list):
+    def _handle_new_session_info(self, txs: list) -> Tuple[Callable, Callable]:
         """
         Maps the handler onto all relevant transactions.
         Then returns the next handler and filter.

@@ -3,15 +3,16 @@ import tests.context
 import pytest
 import time
 
-from core.communication_manager import CommunicationManager
-from core.runner                import DMLRunner
-from core.scheduler             import DMLScheduler
-from core.configuration         import ConfigurationManager
-from tests.testing_utils        import make_initialize_job, make_model_json
-from tests.testing_utils        import make_serialized_job, serialize_job
-from core.utils.enums           import RawEventTypes, JobTypes, MessageEventTypes
-from core.utils.keras           import serialize_weights
-from core.blockchain.tx_utils   import TxEnum
+from core.communication_manager         import CommunicationManager
+from core.runner                        import DMLRunner
+from core.scheduler                     import DMLScheduler
+from core.configuration                 import ConfigurationManager
+from tests.testing_utils                import make_initialize_job, make_model_json
+from tests.testing_utils                import make_serialized_job, serialize_job
+from core.utils.enums                   import RawEventTypes, JobTypes, MessageEventTypes
+from core.utils.keras                   import serialize_weights
+from core.blockchain.blockchain_utils   import TxEnum
+
 
 config_manager = ConfigurationManager()
 config_manager.bootstrap(
