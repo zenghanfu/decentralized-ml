@@ -92,7 +92,7 @@ class DatasetManager():
         try:
             self.client = ipfsapi.connect(self.host, self.ipfs_port)
         except Exception as e:
-            logging.info(str(e))
+            logging.info("IPFS daemon not started, got: {0}".format(e))
             raise(e)
 
     def _validate_data(self):
