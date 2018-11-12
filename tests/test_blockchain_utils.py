@@ -31,7 +31,7 @@ def test_blockchain_utils_getter_nonexistent_key(config, ipfs_client):
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
-    assert get_val == []
+    assert get_val == [], "Shouldn't have found anything!"
 
 def test_blockchain_utils_setter_simple(config, ipfs_client):
     get_val_before = getter(
@@ -46,7 +46,7 @@ def test_blockchain_utils_setter_simple(config, ipfs_client):
         port=config.getint('BLOCKCHAIN', 'http_port'),
         value=test_value,
     )
-    assert tx_receipt
+    assert tx_receipt, "Setting failed"
     get_val_after = getter(
         client=ipfs_client,
         key=test_single_key,
@@ -54,7 +54,7 @@ def test_blockchain_utils_setter_simple(config, ipfs_client):
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
-    assert get_val_after == get_val_before + [test_value]
+    assert get_val_after == get_val_before + [test_value], "Setter failed!"
 
 def test_blockchain_utils_setter_multiple_values(config, ipfs_client):
     get_val_before = getter(
@@ -69,13 +69,13 @@ def test_blockchain_utils_setter_multiple_values(config, ipfs_client):
         port=config.getint('BLOCKCHAIN', 'http_port'),
         value=test_value,
     )
-    assert tx_receipt
+    assert tx_receipt, "Setting failed"
     tx_receipt = setter(client=ipfs_client,
         key=test_multiple_key,
         port=config.getint('BLOCKCHAIN', 'http_port'),
         value=test_value,
     )
-    assert tx_receipt
+    assert tx_receipt, "Setting failed"
     get_val_after = getter(
         client=ipfs_client,
         key=test_multiple_key,
@@ -83,4 +83,5 @@ def test_blockchain_utils_setter_multiple_values(config, ipfs_client):
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
-    assert get_val_after == get_val_before + [test_value, test_value]
+    assert get_val_after == get_val_before + [test_value, test_value], \
+        "Multi-setter failed!"

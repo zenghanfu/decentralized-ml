@@ -1,9 +1,9 @@
-from enum import Enum
 import json
 import logging
 import requests
 import time
 from typing import Callable
+from enum import Enum
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -31,10 +31,8 @@ def download(client: object, key: str, state: list) -> list:
     TODO: implement a better way to parse through state list
     """
     relevant_txs = list(
-        map(lambda tx: 
-                ipfs_to_content(client, tx.get(TxEnum.CONTENT.name)),
-                filter(lambda tx: 
-                tx.get(TxEnum.KEY.name) == key, state)))
+        map(lambda tx: ipfs_to_content(client, tx.get(TxEnum.CONTENT.name)),
+            filter(lambda tx: tx.get(TxEnum.KEY.name) == key, state)))
     return relevant_txs
 
 def ipfs_to_content(client: object, ipfs_hash: str) -> object:
@@ -63,14 +61,15 @@ def get_diffs(global_state: list, local_state: list) -> list:
 # TODO: consider merging the two methods below into one
 
 def filter_diffs(global_state_wrapper: object, local_state: list,
-                    filter_method: Callable = lambda tx: True) -> list:
+                    filter_method: Callable = lambda tx: True,
+                    map_method: Callable = lambda tx: tx) -> list:
     """
     Provided the freshly-downloaded state, call a handler on each transaction
     that was not already present in our own state and return the new state
     """
     new_state = get_diffs(global_state_wrapper.get(TxEnum.MESSAGES.name, {}), 
                             local_state)
-    return list(filter(filter_method, new_state))
+    return list(map(map_method, filter(filter_method, new_state)))
 
 ##############################################################################
 ###                                REQUESTS                                ###

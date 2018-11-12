@@ -13,6 +13,7 @@ import core.utils.context
 from core.configuration import ConfigurationManager
 from core.blockchain.blockchain_utils import setter
 
+
 logging.basicConfig(level=logging.INFO,
                 format='[DatasetManager] %(asctime)s %(levelname)s %(message)s')
 
@@ -88,7 +89,11 @@ class DatasetManager():
         self.ipfs_port = config.getint("BLOCKCHAIN", "ipfs_port")
         self.port = config.getint("BLOCKCHAIN", "http_port")
         self.timeout = config.getint("BLOCKCHAIN", "timeout")
-        self.client = ipfsapi.connect(self.host, self.ipfs_port)
+        try:
+            self.client = ipfsapi.connect(self.host, self.ipfs_port)
+        except Exception as e:
+            logging.info(str(e))
+            raise(e)
 
     def _validate_data(self):
         """
