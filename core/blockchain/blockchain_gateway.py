@@ -1,8 +1,9 @@
 import logging
 from threading import Event, Timer
-import ipfsapi
 import time
 from typing import Callable, Tuple
+
+import ipfsapi
 
 from core.blockchain.blockchain_utils   import (filter_diffs, TxEnum,
                                                 get_global_state, ipfs_to_content)
