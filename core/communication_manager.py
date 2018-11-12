@@ -1,10 +1,10 @@
 import logging
 
-from core.utils.enums           import RawEventTypes, ActionableEventTypes
-from core.utils.enums           import callback_handler_no_default
-from core.fed_avg_optimizer     import FederatedAveragingOptimizer
-from core.utils.dmljob          import DMLJob
-from core.blockchain.tx_utils   import TxEnum
+from core.utils.enums                   import RawEventTypes, ActionableEventTypes
+from core.utils.enums                   import callback_handler_no_default
+from core.fed_avg_optimizer             import FederatedAveragingOptimizer
+from core.utils.dmljob                  import DMLJob
+from core.blockchain.blockchain_utils   import TxEnum
 
 logging.basicConfig(level=logging.DEBUG,
     format='[CommunicationManager] %(asctime)s %(levelname)s %(message)s')
