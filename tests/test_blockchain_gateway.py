@@ -39,9 +39,6 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
     """
     Uses Mock Communication Manager to ensure that the Gateway
     can listen for decentralized learning.
-
-    This test has some problems since the loop of events is incomplete.
-    # NOTE: Should be updated after Averaging/Communication PRs are merged
     """
     
     blockchain_gateway = BlockchainGateway()
@@ -54,7 +51,6 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
     assert communication_manager.dummy1 == RawEventTypes.NEW_SESSION.name, "Wrong dummy1"
     assert communication_manager.dummy2 == {"model": "hello world"}, "Wrong dummy2"
 
-# TODO: This will be implemented once we figure out how.	
 # def test_handle_decentralized_learning(blockchain_gateway):	
 #     """To be implemented."""	
 #     pass	
