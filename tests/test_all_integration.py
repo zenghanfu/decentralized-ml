@@ -219,12 +219,12 @@ def test_federated_learning_two_clients_automated(new_session_event):
 #     assert communication_manager.optimizer is None, "Should have terminated!"
 #     # and that completes one local round of federated learning!
 
-def test_communication_manager_can_initialize_and_train_and_average_model(new_session_event):
+def test_communication_manager_can_initialize_and_train_model(mnist_filepath):
     """
     Integration test that checks that the Communication Manager can initialize,
     train, (and soon communicate) a model, and average a model.
 
-    Uses communication_manager.inform() instead of Blockchain Gateway for listening.
+    NOTE: This should be renamed after the COMM PR.
 
     This is everything that happens in this test:
 
@@ -243,12 +243,16 @@ def test_communication_manager_can_initialize_and_train_and_average_model(new_se
          Scheduler
     (11) Communication Manager gives DMLResult to Optimizer
     (12) Optimizer updates its weights to trained weights
+
+    NOTE: These next steps are not implemented yet! (They need the COMM PR.)
     (13) Optimizer tells Communication Manager to schedule a communication job
     (14) Communication Manager schedules communication job
     (15) Communication Manager receives DMLResult for communication job from
          Scheduler
     (16) Communication Manager gives DMLResult to Optimizer
     (17) Optimizer tells the Communication Manager to do nothing
+
+    NOTE: Next steps are specific to Averaging PR
     (18) Communication Manager receives new weights from Blockchain Gateway
     (19) Communication Manager gives new weights to Optimizer
     (20) Optimizer tells Communication Manager to schedule an averaging job
@@ -274,10 +278,20 @@ def test_communication_manager_can_initialize_and_train_and_average_model(new_se
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager)
+    true_job = make_initialize_job(make_model_json())
+    serialized_job = serialize_job(true_job)
+    new_session_event = {
+        "key": None,
+        "content": {
+            "optimizer_params": {},
+            "serialized_job": make_serialized_job(mnist_filepath)
+        }
+    }
     communication_manager.inform(
         RawEventTypes.NEW_SESSION.name,
         new_session_event
     )
+
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_INIT.name, \
         "Should be ready to init!"
     timeout = time.time() + 3
@@ -308,8 +322,8 @@ def test_communication_manager_can_initialize_and_train_and_average_model(new_se
     assert len(scheduler.processed) == 3, "No job should have been run!"
     # now it should hear some new weights
     new_weights_event = {
-        TxEnum.KEY.name: MessageEventTypes.NEW_WEIGHTS.name,
-        TxEnum.CONTENT.name: {
+        "key": MessageEventTypes.NEW_WEIGHTS.name,
+        "content": {
             "weights": serialize_weights(communication_manager.optimizer.job.weights)
         }
     }

@@ -57,9 +57,9 @@ class BlockchainGateway(object):
         """
         logging.info("Starting cron...")
         self._listen_as_event(
-                    period_in_mins, 
-                    self._handle_new_session_creation,
-                    self._filter_new_session
+                        period_in_mins, 
+                        self._handle_new_session_creation,
+                        self._filter_new_session
         )
    
     def stop_cron(self) -> None:
