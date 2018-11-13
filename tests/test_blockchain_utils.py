@@ -5,10 +5,10 @@ import pytest
 from core.blockchain.blockchain_utils import getter, setter
 from core.configuration import ConfigurationManager
 
-test_nonexistent_key = 'nonexistence'
-test_single_key = 'singleton'
-test_multiple_key = 'multiplicity'
-test_value = 'World!'
+TEST_NONEXISTENT_KEY = 'nonexistence'
+TEST_SINGLE_KEY = 'singleton'
+TEST_MULTIPLE_KEY = 'multiplicity'
+TEST_VALUE = 'World!'
 
 @pytest.fixture
 def config():
@@ -26,7 +26,7 @@ def ipfs_client(config):
 def test_blockchain_utils_getter_nonexistent_key(config, ipfs_client):
     get_val = getter(
         client=ipfs_client,
-        key=test_nonexistent_key,
+        key=TEST_NONEXISTENT_KEY,
         local_state=[],
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
@@ -36,52 +36,52 @@ def test_blockchain_utils_getter_nonexistent_key(config, ipfs_client):
 def test_blockchain_utils_setter_simple(config, ipfs_client):
     get_val_before = getter(
         client=ipfs_client,
-        key=test_single_key,
+        key=TEST_SINGLE_KEY,
         local_state=[],
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
     tx_receipt = setter(client=ipfs_client,
-        key=test_single_key,
+        key=TEST_SINGLE_KEY,
         port=config.getint('BLOCKCHAIN', 'http_port'),
-        value=test_value,
+        value=TEST_VALUE,
     )
     assert tx_receipt, "Setting failed"
     get_val_after = getter(
         client=ipfs_client,
-        key=test_single_key,
+        key=TEST_SINGLE_KEY,
         local_state=[],
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
-    assert get_val_after == get_val_before + [test_value], "Setter failed!"
+    assert get_val_after == get_val_before + [TEST_VALUE], "Setter failed!"
 
 def test_blockchain_utils_setter_multiple_values(config, ipfs_client):
     get_val_before = getter(
         client=ipfs_client,
-        key=test_multiple_key,
+        key=TEST_MULTIPLE_KEY,
         local_state=[],
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
     tx_receipt = setter(client=ipfs_client,
-        key=test_multiple_key,
+        key=TEST_MULTIPLE_KEY,
         port=config.getint('BLOCKCHAIN', 'http_port'),
-        value=test_value,
+        value=TEST_VALUE,
     )
     assert tx_receipt, "Setting failed"
     tx_receipt = setter(client=ipfs_client,
-        key=test_multiple_key,
+        key=TEST_MULTIPLE_KEY,
         port=config.getint('BLOCKCHAIN', 'http_port'),
-        value=test_value,
+        value=TEST_VALUE,
     )
     assert tx_receipt, "Setting failed"
     get_val_after = getter(
         client=ipfs_client,
-        key=test_multiple_key,
+        key=TEST_MULTIPLE_KEY,
         local_state=[],
         port=config.getint('BLOCKCHAIN', 'http_port'),
         timeout=config.getint('BLOCKCHAIN', 'timeout')
     )
-    assert get_val_after == get_val_before + [test_value, test_value], \
+    assert get_val_after == get_val_before + [TEST_VALUE, TEST_VALUE], \
         "Multi-setter failed!"

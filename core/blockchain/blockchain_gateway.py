@@ -56,9 +56,11 @@ class BlockchainGateway(object):
         CRON method to listen. Runs asynchronously.
         """
         logging.info("Starting cron...")
-        self._listen_as_event(period_in_mins, 
-                self._handle_new_session_creation,
-                self._filter_new_session)
+        self._listen_as_event(
+                        period_in_mins, 
+                        self._handle_new_session_creation,
+                        self._filter_new_session
+        )
    
     def stop_cron(self) -> None:
         """
