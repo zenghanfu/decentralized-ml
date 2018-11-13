@@ -31,15 +31,11 @@ def test_dmlrunner_initialize_job_returns_list_of_nparray(config_manager):
     assert type(initial_weights) == list
     assert type(initial_weights[0]) == np.ndarray
 
-
 def test_dmlrunner_train_job_returns_weights_omega_and_stats(config_manager):
     model_json = make_model_json()
     hyperparams = make_hyperparams()
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(model_json)
-    initialize_job.hyperparams['epochs'] = 10
-    initialize_job.hyperparams['batch_size'] = 128
-    initialize_job.hyperparams['split'] = .05
     initial_weights = runner.run_job(initialize_job).results['weights']
     train_job = make_train_job(model_json, initial_weights, hyperparams)
     result = runner.run_job(train_job)
@@ -53,7 +49,6 @@ def test_dmlrunner_train_job_returns_weights_omega_and_stats(config_manager):
     assert type(new_weights[0]) == np.ndarray
     assert type(omega) == int or type(omega) == float
     assert type(train_stats) == dict
-
 
 def test_dmlrunner_validate_job_returns_stats(config_manager):
     model_json = make_model_json()

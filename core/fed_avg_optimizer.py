@@ -5,12 +5,11 @@ from core.utils.enums 					import JobTypes, callback_handler_no_default
 from core.utils.dmljob 					import deserialize_job
 from core.utils.keras 					import serialize_weights
 from core.utils.dmlresult 				import DMLResult
-from core.blockchain.blockchain_gateway	import TxEnum
+from core.blockchain.blockchain_utils	import TxEnum
 
 
 logging.basicConfig(level=logging.DEBUG,
 	format='[FedAvgOpt] %(asctime)s %(levelname)s %(message)s')
-
 
 class FederatedAveragingOptimizer(object):
 	"""
