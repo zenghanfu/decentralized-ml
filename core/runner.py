@@ -3,11 +3,8 @@ import random
 import uuid
 import time
 import os
-<<<<<<< HEAD
 import ipfsapi
-=======
 import pandas as pd
->>>>>>> 435b3085cfd0276de8faf2110b506e9e27a2a9a6
 import numpy as np
 
 from core.configuration import ConfigurationManager
@@ -50,22 +47,14 @@ class DMLRunner(object):
         self.iden = str(uuid.uuid4())[:8]
         
         self.config = dict(config.items("RUNNER"))
-<<<<<<< HEAD
         self.blockchain_config = config
-        self.data_count = count_datapoints(self.dataset_path)
-=======
->>>>>>> 435b3085cfd0276de8faf2110b506e9e27a2a9a6
         self.JOB_CALLBACKS = {
             JobTypes.JOB_TRAIN.name: self._train,
             JobTypes.JOB_INIT.name: self._initialize,
             JobTypes.JOB_VAL.name: self._validate,
             JobTypes.JOB_TRANSFORM_SPLIT.name: self._transform_and_split_data,
             JobTypes.JOB_AVG.name: self._average,
-<<<<<<< HEAD
             JobTypes.JOB_COMM.name: self._communicate,
-=======
-            JobTypes.JOB_COMM.name: self._communicate
->>>>>>> 435b3085cfd0276de8faf2110b506e9e27a2a9a6
         }
 
     def run_job(self, job):
