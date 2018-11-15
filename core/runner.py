@@ -45,9 +45,11 @@ class DMLRunner(object):
         """
         config = config_manager.get_config()
         self.iden = str(uuid.uuid4())[:8]
-        
         self.config = dict(config.items("RUNNER"))
-        self.blockchain_config = config
+        self.client = ipfsapi.connect(
+            config.get('BLOCKCHAIN', 'host'), 
+            config.getint('BLOCKCHAIN', 'ipfs_port'))
+        self.port = config.getint('BLOCKCHAIN', 'http_port')
         self.JOB_CALLBACKS = {
             JobTypes.JOB_TRAIN.name: self._train,
             JobTypes.JOB_INIT.name: self._initialize,
@@ -254,10 +256,9 @@ class DMLRunner(object):
         Communicates a message to the blockchain.
         """
         tx_receipt = setter(
-            client = ipfsapi.connect(self.blockchain_config.get('BLOCKCHAIN', 'host'), 
-                        self.blockchain_config.getint('BLOCKCHAIN', 'ipfs_port')),
+            client=self.client,
             key = job.key,
-            port = self.blockchain_config.getint('BLOCKCHAIN', 'http_port'),
+            port = self.port,
             value = serialize_job(job),
         )
         results = DMLResult(
