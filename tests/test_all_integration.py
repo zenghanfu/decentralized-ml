@@ -66,8 +66,8 @@ def test_federated_learning_two_clients_automated(new_session_event):
     scheduler_2.start_cron(period_in_mins=0.01)
     blockchain_gateway.start_cron(period_in_mins=0.01)
     blockchain_gateway_2.start_cron(period_in_mins=0.01)
-    timeout = 25 + time.time()
-    while time.time() < timeout and len(scheduler.processed) < 10:
+    timeout = 30 + time.time()
+    while time.time() < timeout and len(scheduler.processed) != 10:
         time.sleep(1)
     scheduler.stop_cron()
     scheduler_2.stop_cron()
@@ -118,9 +118,9 @@ def test_federated_learning_two_clients_manual(new_session_event):
         # (3c) JOB_COMM
     scheduler.start_cron(period_in_mins = 0.01)
     scheduler_2.start_cron(period_in_mins=0.01)
-    timeout = time.time() + 15
-    while time.time() < timeout and (len(scheduler.processed) < 4\
-        or len(scheduler_2.processed) < 4):
+    timeout = time.time() + 20
+    while time.time() < timeout and (len(scheduler.processed) != 4\
+        or len(scheduler_2.processed) != 4):
         time.sleep(1)
     assert len(scheduler.processed) == 4, "Jobs failed/not completed in time!"
     assert len(scheduler_2.processed) == 4, "Jobs failed/not completed in time!"
@@ -136,8 +136,8 @@ def test_federated_learning_two_clients_manual(new_session_event):
         # (6a) JOB_TRAIN
         # (6a) JOB_COMM
     timeout = time.time() + 15
-    while time.time() < timeout and (len(scheduler.processed) < 8\
-        or len(scheduler_2.processed) < 8):
+    while time.time() < timeout and (len(scheduler.processed) != 8\
+        or len(scheduler_2.processed) != 8):
         time.sleep(1)
     assert len(scheduler.processed) == 8, \
         "Jobs {} failed/not completed in time!".format([
@@ -154,8 +154,8 @@ def test_federated_learning_two_clients_manual(new_session_event):
         # (9a) JOB_AVG
         # (9a) JOB_AVG
     timeout = time.time() + 5
-    while time.time() < timeout and (len(scheduler.processed) < 10\
-        or len(scheduler_2.processed) < 10):
+    while time.time() < timeout and (len(scheduler.processed) != 10\
+        or len(scheduler_2.processed) != 10):
         time.sleep(1)
     scheduler.stop_cron()
     scheduler_2.stop_cron()
