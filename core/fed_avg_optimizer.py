@@ -2,7 +2,7 @@ import logging
 
 from core.utils.enums 					import ActionableEventTypes, RawEventTypes, MessageEventTypes
 from core.utils.enums 					import JobTypes, callback_handler_no_default
-from core.utils.dmljob 					import deserialize_job
+from core.utils.dmljob 					import deserialize_job, DMLJob
 from core.utils.keras 					import serialize_weights
 from core.utils.dmlresult 				import DMLResult
 from core.blockchain.blockchain_utils	import TxEnum
@@ -56,6 +56,7 @@ class FederatedAveragingOptimizer(object):
 		self.listen_bound = optimizer_params.get('listen_bound')
 		self.total_iterations = 0
 		self.total_bound = optimizer_params.get('total_bound')
+		self.initialization_complete = False
 		self.LEVEL1_CALLBACKS = {
 			RawEventTypes.JOB_DONE.name: self._handle_job_done,
 			RawEventTypes.NEW_INFO.name: self._handle_new_info,
@@ -66,6 +67,7 @@ class FederatedAveragingOptimizer(object):
 			JobTypes.JOB_INIT.name: self._done_initializing,
 			JobTypes.JOB_AVG.name: self._done_averaging,
 			JobTypes.JOB_COMM.name: self._done_communicating,
+			JobTypes.JOB_SPLIT.name: self._done_split,
 		}
 		self.LEVEL_2_INFO_CALLBACKS = {
 			MessageEventTypes.NEW_WEIGHTS.name: self._received_new_weights,
@@ -81,8 +83,12 @@ class FederatedAveragingOptimizer(object):
 		Creates a job that transforms and splits the dataset, and also
 		randomly initializes the model.
 		"""
-		self.job.job_type = JobTypes.JOB_INIT.name
-		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
+		job_arr = []
+		job_one = self.job.copy_constructor(JobTypes.JOB_INIT.name)
+		job_arr.append(job_one)
+		job_two = self.job.copy_constructor(JobTypes.JOB_SPLIT.name)
+		job_arr.append(job_two)
+		return ActionableEventTypes.SCHEDULE_JOBS.name, job_arr
 
 	def ask(self, event_type, payload):
 		"""
@@ -109,12 +115,32 @@ class FederatedAveragingOptimizer(object):
 	def _done_initializing(self, dmlresult_obj):
 		"""
 		"LEVEL 2" Callback for a initialization job that just completed. Returns
-		a DML Job of type train and modifies the current state of the job.
+		a DML Job of type train unless transforming and splitting is not yet done
+		and modifies the current state of the job.
 		"""
 		new_weights = dmlresult_obj.results.get('weights')
 		self._update_weights(new_weights)
-		self.job.job_type = JobTypes.JOB_TRAIN.name
-		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
+		if self.initialization_complete:
+			return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
+		else:
+			self.job.job_type = JobTypes.JOB_TRAIN.name
+			self.initialization_complete = True
+			return ActionableEventTypes.NOTHING.name, None
+
+	def _done_split(self, dmlresult_obj):
+		"""
+		"LEVEL 2" Callback for a split job that just finished.
+		Returns a DML Job of type train unless initialization is not yet done
+		and modifies the current state of the job.
+		"""
+		self.job.session_filepath = dmlresult_obj.results['session_filepath']
+		self.job.datapoint_count = dmlresult_obj.results['datapoint_count']
+		if self.initialization_complete:
+			return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
+		else:
+			self.job.job_type = JobTypes.JOB_TRAIN.name
+			self.initialization_complete = True
+			return ActionableEventTypes.NOTHING.name, None
 
 	def _done_training(self, dmlresult_obj):
 		"""
@@ -130,13 +156,14 @@ class FederatedAveragingOptimizer(object):
 		self.job.sigma_omega = 1 if not self.job.sigma_omega else self.job.sigma_omega
 		self.job.job_type = JobTypes.JOB_COMM.name
 		self.job.set_key("test")
-		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
+		return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
 
 	def _done_communicating(self, dmlresult_obj):
 		"""
 		"LEVEL 2" Callback for a Communication job.
 		"""
 		return ActionableEventTypes.NOTHING.name, self.job
+	
 	def _done_averaging(self, dmlresult_obj):
 		new_weights = dmlresult_obj.results.get('weights')
 		self._update_weights(new_weights)
@@ -152,9 +179,9 @@ class FederatedAveragingOptimizer(object):
 			self.total_iterations += 1
 			if self.total_iterations >= self.total_bound:
 				return ActionableEventTypes.TERMINATE.name, self.job
-			return ActionableEventTypes.SCHEDULE_JOB.name, self.job
+			return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
 		else:
-			return ActionableEventTypes.NOTHING.name, self.job
+			return ActionableEventTypes.NOTHING.name, None
 
 	# Handlers for new information from the gateway
 	# TODO: This will come with the Gateway PR.
@@ -182,7 +209,7 @@ class FederatedAveragingOptimizer(object):
 		self.job.job_type = JobTypes.JOB_AVG.name
 		self.job.omega = 1
 		self.job.new_weights = payload[TxEnum.CONTENT.name]["weights"]
-		return ActionableEventTypes.SCHEDULE_JOB.name, self.job
+		return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
 
 	def _received_termination(self, payload):
 		"""
