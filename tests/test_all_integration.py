@@ -70,15 +70,21 @@ def test_federated_learning_two_clients_automated(new_session_event):
     # Set up second client
     communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager)
     # (0) Someone sends decentralized learning event to the chain
-    tx_receipt = setter(blockchain_gateway.client, None, blockchain_gateway.port, new_session_event, True)
+    tx_receipt = setter(
+        client=blockchain_gateway.client, 
+        key=None, 
+        port=blockchain_gateway.port, 
+        value=new_session_event, 
+        flag=True
+    )
     assert tx_receipt
     scheduler.start_cron(period_in_mins=0.01)
     scheduler_2.start_cron(period_in_mins=0.01)
     blockchain_gateway.start_cron(period_in_mins=0.01)
     blockchain_gateway_2.start_cron(period_in_mins=0.01)
-    timeout = 30 + time.time()
+    timeout = 40 + time.time()
     while time.time() < timeout and (len(scheduler.processed) != 10 or len(scheduler_2.processed) != 10):
-        time.sleep(1)
+        time.sleep(5)
     scheduler.stop_cron()
     scheduler_2.stop_cron()
     blockchain_gateway.stop_cron()
@@ -124,10 +130,10 @@ def test_federated_learning_two_clients_manual(new_session_event):
         # (3c) JOB_COMM
     scheduler.start_cron(period_in_mins = 0.01)
     scheduler_2.start_cron(period_in_mins=0.01)
-    timeout = time.time() + 20
+    timeout = time.time() + 25
     while time.time() < timeout and (len(scheduler.processed) != 4\
         or len(scheduler_2.processed) != 4):
-        time.sleep(1)
+        time.sleep(5)
     assert len(scheduler.processed) == 4, "Jobs failed/not completed in time!"
     assert len(scheduler_2.processed) == 4, "Jobs failed/not completed in time!"
     # (4) Gateway_1 listens for the new weights 
@@ -141,10 +147,10 @@ def test_federated_learning_two_clients_manual(new_session_event):
         # (6b) JOB_AVG
         # (6a) JOB_TRAIN
         # (6a) JOB_COMM
-    timeout = time.time() + 15
+    timeout = time.time() + 20
     while time.time() < timeout and (len(scheduler.processed) != 8\
         or len(scheduler_2.processed) != 8):
-        time.sleep(1)
+        time.sleep(4)
     assert len(scheduler.processed) == 8, \
         "Jobs {} failed/not completed in time!".format([
             result.job.job_type for result in scheduler.processed])
@@ -159,10 +165,10 @@ def test_federated_learning_two_clients_manual(new_session_event):
     # (14) Scheduler_1 and Scheduler_2 runs the following jobs:
         # (9a) JOB_AVG
         # (9a) JOB_AVG
-    timeout = time.time() + 5
+    timeout = time.time() + 10
     while time.time() < timeout and (len(scheduler.processed) != 10\
         or len(scheduler_2.processed) != 10):
-        time.sleep(1)
+        time.sleep(2)
     scheduler.stop_cron()
     scheduler_2.stop_cron()
     assert len(scheduler.processed) == 10, "Jobs failed/not completed in time!"
