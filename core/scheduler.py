@@ -73,7 +73,7 @@ class DMLScheduler(object):
 			period_in_mins = self.frequency_in_mins
 		logging.info("Starting cron...")
 		self._runners_run_next_jobs_as_event(period_in_mins)
-		# logging.info("Cron started!")
+		logging.info("Cron started!")
 
 	def stop_cron(self):
 		"""
@@ -81,7 +81,7 @@ class DMLScheduler(object):
 		"""
 		logging.info("Stopping cron...")
 		self.event.set()
-		# logging.info("Cron stopped!")
+		logging.info("Cron stopped!")
 
 	def reset(self, reset_history=False):
 		"""

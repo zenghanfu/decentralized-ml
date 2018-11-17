@@ -66,6 +66,10 @@ class DMLJob(object):
         """
         NOTE: This function is used to get relevant information into the DMLJob
         for averaging. It will be deprecated in future.
+
+        new_weights : weights to be averaged
+        omega : the omega for new_weights
+        sigma_omega : the sum of all omegas for all weights previously averaged
         """
         self.weights = current_weights
         self.new_weights = new_weights
@@ -77,6 +81,7 @@ class DMLJob(object):
         TODO: Remove this as well as the above method, and see how to change.
         """
         self.key = key
+    
     def copy_constructor(self, job_type):
         newjob = deepcopy(self)
         newjob.job_type = job_type
@@ -92,6 +97,7 @@ def serialize_job(dmljob_obj):
     Returns:
         dict: The serialized version of the DML Job.
     """
+    assert isinstance(dmljob_obj, DMLJob), "Cannot serialize_job a non-DMLJob!"
     rest = {
         'job_type': dmljob_obj.job_type,
         'serialized_model': dmljob_obj.serialized_model,
@@ -100,7 +106,9 @@ def serialize_job(dmljob_obj):
         'label_column_name': dmljob_obj.label_column_name,
         'raw_filepath': dmljob_obj.raw_filepath,
         'session_filepath': dmljob_obj.session_filepath,
-        'datapoint_count': dmljob_obj.datapoint_count
+        'datapoint_count': dmljob_obj.datapoint_count,
+        'omega': dmljob_obj.omega,
+        'sigma_omega': dmljob_obj.sigma_omega,
     }
     weights = None
     if dmljob_obj.weights:
@@ -124,7 +132,7 @@ def deserialize_job(serialized_job):
     weights = None
     if serialized_job.get('weights', None):
         weights = deserialize_weights(serialized_job['weights'])
-    return DMLJob(
+    job = DMLJob(
         rest['job_type'],
         rest['serialized_model'],
         rest['framework_type'],
@@ -135,3 +143,6 @@ def deserialize_job(serialized_job):
         rest['session_filepath'],
         rest['datapoint_count']
     )
+    job.omega = rest['omega']
+    job.sigma_omega = rest['sigma_omega']
+    return job

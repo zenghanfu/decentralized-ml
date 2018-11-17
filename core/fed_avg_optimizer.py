@@ -152,8 +152,9 @@ class FederatedAveragingOptimizer(object):
 		weights.
 		"""
 		new_weights = dmlresult_obj.results.get('weights')
+		self.job.omega = dmlresult_obj.results.get('omega')
+		self.job.sigma_omega = self.job.omega
 		self._update_weights(new_weights)
-		self.job.sigma_omega = 1 if not self.job.sigma_omega else self.job.sigma_omega
 		self.job.job_type = JobTypes.JOB_COMM.name
 		self.job.set_key("test")
 		return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
@@ -162,7 +163,7 @@ class FederatedAveragingOptimizer(object):
 		"""
 		"LEVEL 2" Callback for a Communication job.
 		"""
-		return ActionableEventTypes.NOTHING.name, self.job
+		return ActionableEventTypes.NOTHING.name, None
 	
 	def _done_averaging(self, dmlresult_obj):
 		new_weights = dmlresult_obj.results.get('weights')
@@ -171,20 +172,20 @@ class FederatedAveragingOptimizer(object):
 		self.job.sigma_omega = dmlresult_obj.job.sigma_omega + dmlresult_obj.job.omega
 		self.listen_iterations += 1
 		if self.listen_iterations >= self.listen_bound:
-			logging.info("DONE WITH ONE ROUND OF FEDERATED LEARNING!")
+			logging.info("DONE WITH ROUND {} OF FEDERATED LEARNING!".format(self.total_iterations))
 			self.job.job_type = JobTypes.JOB_TRAIN.name
 			self.listen_iterations = 0
-			# Reset sigma_omega
-			self.job.sigma_omega = 1
+			# Reset sigma_omega for new round of learning
+			self.job.sigma_omega = 0
 			self.total_iterations += 1
 			if self.total_iterations >= self.total_bound:
 				return ActionableEventTypes.TERMINATE.name, self.job
-			return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
+			else:
+				return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
 		else:
 			return ActionableEventTypes.NOTHING.name, None
 
 	# Handlers for new information from the gateway
-	# TODO: This will come with the Gateway PR.
 
 	def _handle_new_info(self, payload):
 		"""
@@ -206,9 +207,10 @@ class FederatedAveragingOptimizer(object):
 		blockchain.	
 		"""
 		logging.info("Received new weights!")
+		received_job = deserialize_job(payload[TxEnum.CONTENT.name])
 		self.job.job_type = JobTypes.JOB_AVG.name
-		self.job.omega = 1
-		self.job.new_weights = payload[TxEnum.CONTENT.name]["weights"]
+		self.job.omega = received_job.omega
+		self.job.new_weights = received_job.weights
 		return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
 
 	def _received_termination(self, payload):

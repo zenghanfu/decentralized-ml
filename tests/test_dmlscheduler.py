@@ -8,7 +8,8 @@ import numpy as np
 
 from core.scheduler             import DMLScheduler
 from core.configuration         import ConfigurationManager
-from tests.testing_utils        import make_initialize_job, make_model_json, make_split_job
+from tests.testing_utils        import (make_initialize_job, make_model_json, \
+                                        make_split_job, make_communicate_job)
 
 
 config_manager = ConfigurationManager()
@@ -32,6 +33,7 @@ def test_dmlscheduler_sanity():
     """
     Check that the scheduling/running functionality is maintained.
     """
+    scheduler.reset()
     model_json = make_model_json()
     initialize_job = make_initialize_job(model_json)
     scheduler.add_job(initialize_job)
@@ -43,7 +45,7 @@ def test_dmlscheduler_sanity():
     initial_weights = output.results['weights']
     assert type(initial_weights) == list
     assert type(initial_weights[0]) == np.ndarray
-
+    scheduler.reset()
 
 def test_dmlscheduler_arbitrary_scheduling():
     """
@@ -73,7 +75,7 @@ def test_dmlscheduler_arbitrary_scheduling():
         initial_weights = output.results['weights']
         assert type(initial_weights) == list
         assert type(initial_weights[0]) == np.ndarray
-
+    scheduler.reset()
 
 def test_dmlscheduler_cron():
     """
@@ -86,7 +88,9 @@ def test_dmlscheduler_cron():
         initialize_job = make_initialize_job(model_json)
         scheduler.add_job(initialize_job)
     scheduler.start_cron(period_in_mins = 0.01)
-    time.sleep(5)
+    timeout = time.time() + 6
+    while time.time() < timeout and len(scheduler.processed) != m:
+        time.sleep(1)
     scheduler.stop_cron()
     assert len(scheduler.processed) == m
     while scheduler.processed:
@@ -94,3 +98,24 @@ def test_dmlscheduler_cron():
         initial_weights = output.results['weights']
         assert type(initial_weights) == list
         assert type(initial_weights[0]) == np.ndarray
+    scheduler.reset()
+
+# TODO: The below test transiently fails. Why???
+# def test_dmlscheduler_communicate():
+#     """
+#     Test that the Scheduler can schedule/run Communicate Jobs.
+#     """
+#     scheduler.reset()
+#     m = 3
+#     for _ in range(m):
+#         communicate_job = make_communicate_job("testkey", "testweights")
+#         scheduler.add_job(communicate_job)
+#     scheduler.start_cron(period_in_mins=0.01)
+#     timeout = time.time() + 6
+#     while time.time() < timeout and len(scheduler.processed) != m:
+#         time.sleep(1)
+#     scheduler.stop_cron()
+#     assert len(scheduler.processed) == m, \
+#         "Jobs {} failed/not completed in time!".format([
+#         result.job.job_type for result in scheduler.processed])
+#     scheduler.reset()

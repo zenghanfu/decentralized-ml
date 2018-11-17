@@ -42,6 +42,8 @@ class DMLRunner(object):
     def __init__(self, config_manager):
         """
         Sets up the unique identifier of the DML Runner and the local dataset path.
+        
+        Sets up IPFS client for _communicate.
         """
         config = config_manager.get_config()
         self.iden = str(uuid.uuid4())[:8]
@@ -252,7 +254,8 @@ class DMLRunner(object):
 
     def _communicate(self, job):
         """
-        Communicates a message to the blockchain.
+        Communicates a message to the blockchain using the Runner's
+        IPFS client, puts the tx_receipt in DMLResult.
         """
         tx_receipt = setter(
             client=self.client,
@@ -346,8 +349,10 @@ class DMLRunner(object):
         """
         Average the weights in the job weighted by their omegas.
         """
-        deserialized_new_weights = deserialize_weights(job.new_weights)
-        averaged_weights = self._weighted_running_avg(job.weights, deserialized_new_weights, job.sigma_omega, job.omega)
+        assert job.new_weights, "No new_weights supplied to average!"
+        assert job.omega, "No omega supplied to average!"
+        assert job.sigma_omega, "No sigma_omega supplied to average!"
+        averaged_weights = self._weighted_running_avg(job.weights, job.new_weights, job.sigma_omega, job.omega)
         result = DMLResult(
             status='successful',
             job=job,

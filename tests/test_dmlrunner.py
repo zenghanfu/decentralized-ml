@@ -31,15 +31,53 @@ def mnist_filepath():
 def small_filepath():
     return 'tests/artifacts/runner_scheduler/test'
 
-def test_dmlrunner_initialize_job_returns_list_of_nparray(config_manager):
+@pytest.fixture
+def init_dmlresult_obj(config_manager, small_filepath):
+    runner = DMLRunner(config_manager)
+    initialize_job = make_initialize_job(make_model_json(), small_filepath)
+    result = runner.run_job(initialize_job)
+    return result
+
+@pytest.fixture
+def split_dmlresult_obj(config_manager, mnist_filepath):
     model_json = make_model_json()
     runner = DMLRunner(config_manager)
-    initialize_job = make_initialize_job(model_json)
-    result = runner.run_job(initialize_job)
-    assert result.status == 'successful'
-    results = result.results
+    split_job = make_split_job(
+                            model_json, 
+                            mnist_filepath,
+                        )
+    split_job.hyperparams['split'] = 0.75
+    job_results = runner.run_job(split_job)
+    return job_results
+
+@pytest.fixture
+def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj, small_filepath):
+    runner = DMLRunner(config_manager)
+    initial_weights = init_dmlresult_obj.results['weights']
+    session_filepath = split_dmlresult_obj.results['session_filepath']
+    datapoint_count = split_dmlresult_obj.results['datapoint_count']
+    train_job = make_train_job(
+                    make_model_json(), 
+                    initial_weights, 
+                    make_hyperparams(split=1),
+                    session_filepath,
+                    datapoint_count
+                )
+    result = runner.run_job(train_job)
+    return result
+
+def test_dmlrunner_communicate_job(config_manager, train_dmlresult_obj):
+    runner = DMLRunner(config_manager)
+    comm_job = train_dmlresult_obj.job
+    comm_job.set_key("test")
+    result = runner._communicate(comm_job)
+    assert result.results["receipt"]
+
+def test_dmlrunner_initialize_job_returns_list_of_nparray(config_manager, init_dmlresult_obj):
+    assert init_dmlresult_obj.status == 'successful'
+    results = init_dmlresult_obj.results
     initial_weights = results['weights']
-    assert result.job.job_type is JobTypes.JOB_INIT.name
+    assert init_dmlresult_obj.job.job_type is JobTypes.JOB_INIT.name
     assert type(initial_weights) == list
     assert type(initial_weights[0]) == np.ndarray
 
@@ -70,27 +108,9 @@ def test_dmlrunner_transform_and_split( \
         shutil.rmtree(session_filepath)
 
 def test_dmlrunner_train_job_returns_weights_omega_and_stats( \
-        config_manager, mnist_filepath):
-    model_json = make_model_json()
-    hyperparams = make_hyperparams()
-    runner = DMLRunner(config_manager)
-    initialize_job = make_initialize_job(model_json)
-    initial_weights = runner.run_job(initialize_job).results['weights']
-    split_job = make_split_job(
-                            model_json, 
-                            mnist_filepath
-                        )
-    job_results = runner.run_job(split_job)
-    session_filepath = job_results.results['session_filepath']
-    datapoint_count = job_results.results['datapoint_count']
-    train_job = make_train_job(
-                    model_json, 
-                    initial_weights, 
-                    hyperparams, 
-                    session_filepath,
-                    datapoint_count
-                )
-    result = runner.run_job(train_job)
+        config_manager, mnist_filepath, train_dmlresult_obj):
+    result = train_dmlresult_obj
+    session_filepath = result.job.session_filepath
     results = result.results
     new_weights = results['weights']
     omega = results['omega']
@@ -145,27 +165,14 @@ def test_dmlrunner_same_train_job_with_split_1( \
 
 
 def test_dmlrunner_validate_job_returns_stats( \
-        config_manager, mnist_filepath):
+        config_manager, mnist_filepath, train_dmlresult_obj):
     model_json = make_model_json()
     hyperparams = make_hyperparams()
     runner = DMLRunner(config_manager)
-    initialize_job = make_initialize_job(make_model_json())
-    initial_weights = runner.run_job(initialize_job).results['weights']
-    split_job = make_split_job(
-                            model_json, 
-                            mnist_filepath
-                        )
-    job_results = runner.run_job(split_job)
-    session_filepath = job_results.results['session_filepath']
-    datapoint_count = job_results.results['datapoint_count']
-    train_job = make_train_job(
-                    model_json, 
-                    initial_weights, 
-                    hyperparams, 
-                    session_filepath,
-                    datapoint_count
-                )
-    result = runner.run_job(train_job)
+    job_results = train_dmlresult_obj
+    session_filepath = job_results.job.session_filepath
+    datapoint_count = job_results.job.datapoint_count
+    result = train_dmlresult_obj
     assert result.status == 'successful'
     results = result.results
     new_weights = results['weights']
@@ -189,20 +196,15 @@ def test_dmlrunner_validate_job_returns_stats( \
     if os.path.isdir(session_filepath):
         shutil.rmtree(session_filepath)
 
-def test_dmlrunner_initialize_job_weights_can_be_serialized(config_manager):
-    model_json = make_model_json()
-    runner = DMLRunner(config_manager)
-    initialize_job = make_initialize_job(model_json)
-    initial_weights = runner.run_job(initialize_job).results['weights']
+def test_dmlrunner_initialize_job_weights_can_be_serialized(config_manager, init_dmlresult_obj):
+    initial_weights = init_dmlresult_obj.results['weights']
     same_weights = deserialize_weights(serialize_weights(initial_weights))
     assert all(np.allclose(arr1, arr2) for arr1,arr2 in zip(same_weights, initial_weights)) 
 
-def test_dmlrunner_averaging_weights(config_manager):
-    model_json = make_model_json()
+def test_dmlrunner_averaging_weights(config_manager, init_dmlresult_obj):
     runner = DMLRunner(config_manager)
-    initialize_job = make_initialize_job(model_json)
-    initial_weights = runner.run_job(initialize_job).results['weights']
-    serialized_weights = serialize_weights(initial_weights)
-    initialize_job.set_weights(initial_weights, serialized_weights, 1, 1)
+    initialize_job = init_dmlresult_obj.job
+    initial_weights = init_dmlresult_obj.results['weights']
+    initialize_job.set_weights(initial_weights, initial_weights, 1, 1)
     averaged_weights = runner._average(initialize_job).results['weights']
     assert all(np.allclose(arr1, arr2) for arr1,arr2 in zip(averaged_weights, initial_weights))
