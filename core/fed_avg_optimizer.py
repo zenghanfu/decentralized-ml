@@ -69,7 +69,7 @@ class FederatedAveragingOptimizer(object):
 			JobTypes.JOB_COMM.name: self._done_communicating,
 			JobTypes.JOB_SPLIT.name: self._done_split,
 		}
-		self.LEVEL_2_INFO_CALLBACKS = {
+		self.LEVEL_2_NEW_INFO_CALLBACKS = {
 			MessageEventTypes.NEW_WEIGHTS.name: self._received_new_weights,
 			MessageEventTypes.TERMINATE.name: self._received_termination,
 		}
@@ -197,7 +197,7 @@ class FederatedAveragingOptimizer(object):
 		# TODO: Some assert on the payload, like in `_handle_job_done()`.
 		callback = callback_handler_no_default(
 			payload[TxEnum.KEY.name],
-			self.LEVEL_2_INFO_CALLBACKS
+			self.LEVEL_2_NEW_INFO_CALLBACKS
 		)
 		return callback(payload)
 
