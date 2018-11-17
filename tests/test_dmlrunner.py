@@ -85,8 +85,9 @@ def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj,
 def test_dmlrunner_communicate_job(config_manager, train_dmlresult_obj):
     runner = DMLRunner(config_manager)
     comm_job = train_dmlresult_obj.job
+    comm_job.job_type = JobTypes.JOB_COMM.name
     comm_job.key = "test"
-    result = runner._communicate(comm_job)
+    result = runner.run_job(comm_job)
     assert result.results["receipt"]
     session_filepath = train_dmlresult_obj.job.session_filepath
     # Clean up

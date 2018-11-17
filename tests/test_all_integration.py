@@ -30,11 +30,6 @@ def mnist_filepath():
 
 @pytest.fixture
 def new_session_event(mnist_filepath):
-    # initialize_job = make_initialize_job(make_model_json())
-    # initialize_job.hyperparams['epochs'] = 10
-    # initialize_job.hyperparams['batch_size'] = 128
-    # initialize_job.hyperparams['split'] = .9
-    # serialized_job = serialize_job(initialize_job)
     serialized_job = make_serialized_job(mnist_filepath)
     new_session_event = {
         TxEnum.KEY.name: None,
