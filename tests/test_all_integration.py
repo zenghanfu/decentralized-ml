@@ -234,7 +234,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager)
     communication_manager.inform(
-        RawEventTypes.NEW_SESSION.name,
+        MessageEventTypes.NEW_SESSION.name,
         new_session_event
     )
 
@@ -274,7 +274,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
         TxEnum.CONTENT.name: serialize_job(scheduler.processed[3].job)
     }
     communication_manager.inform(
-        RawEventTypes.NEW_INFO.name,
+        RawEventTypes.NEW_MESSAGE.name,
         new_weights_event
     )
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_AVG.name, \
@@ -294,7 +294,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
     assert len(scheduler.processed) == 5, "No job should have been run!"
     # now it should hear more new weights
     communication_manager.inform(
-        RawEventTypes.NEW_INFO.name,
+        RawEventTypes.NEW_MESSAGE.name,
         new_weights_event
     )
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_AVG.name, \

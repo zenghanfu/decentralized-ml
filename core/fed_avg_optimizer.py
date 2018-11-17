@@ -59,8 +59,8 @@ class FederatedAveragingOptimizer(object):
 		self.initialization_complete = False
 		self.LEVEL1_CALLBACKS = {
 			RawEventTypes.JOB_DONE.name: self._handle_job_done,
-			RawEventTypes.NEW_INFO.name: self._handle_new_info,
-			RawEventTypes.NEW_SESSION.name: self._do_nothing,
+			RawEventTypes.NEW_MESSAGE.name: self._handle_new_info,
+			MessageEventTypes.NEW_SESSION.name: self._do_nothing,
 		}
 		self.LEVEL2_JOB_DONE_CALLBACKS = {
 			JobTypes.JOB_TRAIN.name: self._done_training,

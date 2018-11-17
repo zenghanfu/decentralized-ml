@@ -1,6 +1,6 @@
 import logging
 
-from core.utils.enums                   import RawEventTypes, ActionableEventTypes
+from core.utils.enums                   import RawEventTypes, MessageEventTypes, ActionableEventTypes
 from core.utils.enums                   import callback_handler_no_default
 from core.fed_avg_optimizer             import FederatedAveragingOptimizer
 from core.utils.dmljob                  import DMLJob
@@ -35,7 +35,7 @@ class CommunicationManager(object):
         # NOTE: This should be updated when Gateway PR is merged and we make
         # the Communication Manager error-handle out of order/missed messages.
         self.EVENT_TYPE_2_CALLBACK = {
-            RawEventTypes.NEW_SESSION.name: self._create_session,
+            MessageEventTypes.NEW_SESSION.name: self._create_session,
             ActionableEventTypes.SCHEDULE_JOBS.name: self._schedule_jobs,
             ActionableEventTypes.TERMINATE.name: self._terminate_session,
             ActionableEventTypes.NOTHING.name: self._do_nothing,

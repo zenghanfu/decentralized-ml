@@ -3,7 +3,7 @@ import pytest
 
 from core.configuration                 import ConfigurationManager	
 from core.blockchain.blockchain_gateway import BlockchainGateway
-from core.utils.enums                   import RawEventTypes
+from core.utils.enums                   import RawEventTypes, MessageEventTypes
 from core.blockchain.blockchain_utils   import setter, TxEnum
 
 
@@ -51,7 +51,7 @@ def test_blockchain_gateway_can_listen_decentralized_learning(config_manager, co
     blockchain_gateway._listen(blockchain_gateway._handle_new_session_creation,
         blockchain_gateway._filter_new_session)
     # at this point we should listen for decentralized learning, hear it, and update our communication manager
-    assert communication_manager.dummy1 == RawEventTypes.NEW_SESSION.name, "Wrong dummy1"
+    assert communication_manager.dummy1 == MessageEventTypes.NEW_SESSION.name, "Wrong dummy1"
     assert communication_manager.dummy2 == {"model": "hello world"}, "Wrong dummy2"
 
 # TODO: This will be implemented once we figure out how.	

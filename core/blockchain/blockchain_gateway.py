@@ -126,7 +126,7 @@ class BlockchainGateway(object):
             assert TxEnum.KEY.name in tx
             key = tx.get(TxEnum.KEY.name)
             value = tx.get(TxEnum.CONTENT.name)
-            self.communication_manager.inform(RawEventTypes.NEW_SESSION.name, ipfs_to_content(self.client, value))
+            self.communication_manager.inform(MessageEventTypes.NEW_SESSION.name, ipfs_to_content(self.client, value))
         list(map(handler, txs))
         return self._handle_new_session_info, self._filter_new_session_info
     
@@ -154,6 +154,6 @@ class BlockchainGateway(object):
                     TxEnum.CONTENT.name: ipfs_to_content(self.client, value)}
             # TODO: Put into in-memory datastore.
             self.communication_manager.inform(
-                RawEventTypes.NEW_INFO.name,args)
+                RawEventTypes.NEW_MESSAGE.name,args)
         list(map(handler, txs))
         return self._handle_new_session_info, self._filter_new_session_info

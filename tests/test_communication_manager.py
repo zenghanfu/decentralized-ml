@@ -50,7 +50,7 @@ def test_communication_manager_fails_if_not_configured(new_session_event):
     communication_manager = CommunicationManager()
     try:
         communication_manager.inform(
-            RawEventTypes.NEW_SESSION.name,
+            MessageEventTypes.NEW_SESSION.name,
             new_session_event
         )
         raise Exception("This should have raised an exception")
@@ -68,7 +68,7 @@ def test_communication_manager_creates_new_sessions(new_session_event):
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager)
     communication_manager.inform(
-        RawEventTypes.NEW_SESSION.name,
+        MessageEventTypes.NEW_SESSION.name,
         new_session_event
     )
     assert communication_manager.optimizer
@@ -96,7 +96,7 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
         }
     }
     communication_manager.inform(
-        RawEventTypes.NEW_SESSION.name,
+        MessageEventTypes.NEW_SESSION.name,
         new_session_event
     )
     optimizer_job = communication_manager.optimizer.job
@@ -130,10 +130,10 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
 #             "serialized_job": serialized_job
 #         }
 #     }
-#     communication_manager.inform(RawEventTypes.NEW_SESSION.name, new_session_event)
+#     communication_manager.inform(MessageEventTypes.NEW_SESSION.name, new_session_event)
 #     terminate_session_event = {
 #         "key": None,
 #         "content": {}
 #     }
-#     communication_manager.inform(RawEventTypes.NEW_INFO.name, terminate_session_event)
+#     communication_manager.inform(RawEventTypes.NEW_MESSAGE.name, terminate_session_event)
 #     assert not communication_manager.optimizer
