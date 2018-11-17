@@ -47,7 +47,12 @@ class DMLJob(object):
                                     `train.csv` and `test.csv` are in folder.
             datapoint_count (int): Number of datapoints after applying
                                    transform function.
-
+            new_weights (list): list of np.arrays representing the weights that
+                                should be averaged with 'weights'
+            omega (float): the weight given to new_weights in weighted averaging
+            sigma_omega (float): the sum of omega's incorporated into weighted
+                                averaging so far. Kept in the DMLJob to allow the
+                                weighted average to be unrolled.
         """
         self.job_type = job_type
         self.serialized_model = serialized_model
@@ -62,9 +67,8 @@ class DMLJob(object):
         self.session_filepath = session_filepath
         self.datapoint_count = datapoint_count
     
-    def copy_constructor(self, job_type):
+    def copy_constructor(self):
         newjob = deepcopy(self)
-        newjob.job_type = job_type
         return newjob
 
 def serialize_job(dmljob_obj):

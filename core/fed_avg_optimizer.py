@@ -84,9 +84,11 @@ class FederatedAveragingOptimizer(object):
 		randomly initializes the model.
 		"""
 		job_arr = []
-		job_one = self.job.copy_constructor(JobTypes.JOB_INIT.name)
+		job_one = self.job.copy_constructor()
+		job_one.job_type = JobTypes.JOB_INIT.name
 		job_arr.append(job_one)
-		job_two = self.job.copy_constructor(JobTypes.JOB_SPLIT.name)
+		job_two = self.job.copy_constructor()
+		job_two.job_type = JobTypes.JOB_SPLIT.name
 		job_arr.append(job_two)
 		return ActionableEventTypes.SCHEDULE_JOBS.name, job_arr
 
