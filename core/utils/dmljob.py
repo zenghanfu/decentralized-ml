@@ -61,26 +61,6 @@ class DMLJob(object):
         self.raw_filepath = raw_filepath
         self.session_filepath = session_filepath
         self.datapoint_count = datapoint_count
-
-    def set_weights(self, current_weights, new_weights, omega, sigma_omega):
-        """
-        NOTE: This function is used to get relevant information into the DMLJob
-        for averaging. It will be deprecated in future.
-
-        new_weights : weights to be averaged
-        omega : the omega for new_weights
-        sigma_omega : the sum of all omegas for all weights previously averaged
-        """
-        self.weights = current_weights
-        self.new_weights = new_weights
-        self.omega = omega
-        self.sigma_omega = sigma_omega
-
-    def set_key(self, key):
-        """
-        TODO: Remove this as well as the above method, and see how to change.
-        """
-        self.key = key
     
     def copy_constructor(self, job_type):
         newjob = deepcopy(self)

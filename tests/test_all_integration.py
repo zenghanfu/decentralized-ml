@@ -17,9 +17,11 @@ from core.blockchain.blockchain_gateway import BlockchainGateway
 from core.blockchain.blockchain_utils   import setter, TxEnum
 
 
+session_filepaths = set()
+
 config_manager = ConfigurationManager()
 config_manager.bootstrap(
-    config_filepath='tests/artifacts/communication_manager/configuration.ini'
+    config_filepath='tests/artifacts/integration/configuration.ini'
 )
 
 @pytest.fixture
@@ -56,10 +58,15 @@ def setup_client(config_manager):
     return communication_manager, blockchain_gateway, scheduler
 
 def cleanup_client(scheduler):
-    session_filepath = scheduler.processed[-1].job.session_filepath
-    # Clean up
-    if os.path.isdir(session_filepath):
-        shutil.rmtree(session_filepath)
+    """
+    Add all the session filepaths (hopefully just 1) to the global list
+    so that test_cleanup can clean them up later
+    """
+    while scheduler.processed:
+        output = scheduler.processed.pop(0)
+        session_filepath = output.job.session_filepath
+        if session_filepath and os.path.isdir(session_filepath):
+            session_filepaths.add(output.job.session_filepath)
 
 def test_federated_learning_two_clients_automated(new_session_event):
     """
@@ -319,3 +326,10 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
         "Should be ready to train!"
     # and that completes one local round of federated learning!
     cleanup_client(scheduler)
+
+def test_cleanup():
+    for session_filepath in session_filepaths:
+        if os.path.isdir(session_filepath):
+            shutil.rmtree(session_filepath)
+    assert len((os.listdir('tests/artifacts/integration/mnist/transformed/'))) == 0, \
+        "Cleanup failed!"

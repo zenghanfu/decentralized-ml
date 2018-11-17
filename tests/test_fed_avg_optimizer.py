@@ -2,6 +2,8 @@ import tests.context
 
 import pytest
 import numpy as np
+import os
+import shutil
 
 from tests.testing_utils import make_initialize_job, make_train_job
 from tests.testing_utils import make_serialized_job, make_model_json
@@ -12,11 +14,14 @@ from core.runner import DMLRunner
 from core.configuration import ConfigurationManager
 from data.iterators import count_datapoints
 
+
+session_filepaths = set()
+
 @pytest.fixture
 def config_manager():
     config_manager = ConfigurationManager()
     config_manager.bootstrap(
-        config_filepath='tests/artifacts/runner_scheduler/configuration.ini'
+        config_filepath='tests/artifacts/fed_avg_optimizer/configuration.ini'
     )
     return config_manager
 
@@ -29,11 +34,11 @@ def initialization_payload(small_filepath):
 
 @pytest.fixture
 def mnist_filepath():
-    return 'tests/artifacts/runner_scheduler/mnist'
+    return 'tests/artifacts/fed_avg_optimizer/mnist'
 
 @pytest.fixture
 def small_filepath():
-    return 'tests/artifacts/runner_scheduler/test'
+    return 'tests/artifacts/fed_avg_optimizer/test'
 
 @pytest.fixture
 def init_dmlresult_obj(config_manager, small_filepath):
@@ -52,10 +57,14 @@ def split_dmlresult_obj(config_manager, mnist_filepath):
                         )
     split_job.hyperparams['split'] = 0.75
     job_results = runner.run_job(split_job)
+    session_filepath = job_results.results['session_filepath']
+    # Clean up
+    if session_filepath and os.path.isdir(session_filepath):
+        session_filepaths.add(session_filepath)
     return job_results
 
 @pytest.fixture
-def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj, small_filepath):
+def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj):
     runner = DMLRunner(config_manager)
     initial_weights = init_dmlresult_obj.results['weights']
     session_filepath = split_dmlresult_obj.results['session_filepath']
@@ -109,3 +118,10 @@ def test_optimizer_schedules_communication_after_training(initialization_payload
     assert event_type == ActionableEventTypes.SCHEDULE_JOBS.name
     for job in job_arr:
         assert job.job_type == JobTypes.JOB_COMM.name
+
+def test_cleanup():
+    for session_filepath in session_filepaths:
+        if os.path.isdir(session_filepath):
+            shutil.rmtree(session_filepath)
+    assert len((os.listdir('tests/artifacts/fed_avg_optimizer/mnist/transformed/'))) == 0, \
+        "Cleanup failed!"

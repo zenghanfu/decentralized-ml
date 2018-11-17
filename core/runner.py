@@ -349,7 +349,9 @@ class DMLRunner(object):
         """
         Average the weights in the job weighted by their omegas.
         """
-        assert job.new_weights, "No new_weights supplied to average!"
+        # TODO: Figure out how to assert that this job actually has weights/new_weights.
+        # assert isinstance(job.weights, np.ndarray), "No weights supplied to average!"
+        # assert isinstance(job.new_weights, np.ndarray), "No new_weights supplied to average!"
         assert job.omega, "No omega supplied to average!"
         assert job.sigma_omega, "No sigma_omega supplied to average!"
         averaged_weights = self._weighted_running_avg(job.weights, job.new_weights, job.sigma_omega, job.omega)
@@ -363,14 +365,15 @@ class DMLRunner(object):
         )
         return result
     
-    def _weighted_running_avg(self, sigma_x_i_div_w_i, x_n, sigma_w_i, w_n):
+    def _weighted_running_avg(self, curr_weighted_avg, x_n, sigma_w_i, w_n):
         """
         Computes a weighting running average.
         w_n is the weight of datapoint n.
         x_n is a datapoint.
-        Sigma_x_i_div_w_i is the current weighted average.
+        curr_weighted_avg is the current weighted average.
         Sigma_w_i is the sum of weights currently.
         """
-        sigma_x_i = np.multiply(sigma_w_i, sigma_x_i_div_w_i)
-        cma_n_plus_one = np.divide(np.add(x_n, sigma_x_i), np.add(w_n,sigma_w_i))
-        return cma_n_plus_one
+        sigma_x_i_times_w_i = np.multiply(curr_weighted_avg, sigma_w_i)
+        sigma_x_i_times_w_i = np.add(sigma_x_i_times_w_i, np.multiply(x_n, w_n))
+        new_weighted_avg = np.divide(sigma_x_i_times_w_i, np.add(sigma_w_i, w_n))
+        return new_weighted_avg

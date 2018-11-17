@@ -156,7 +156,7 @@ class FederatedAveragingOptimizer(object):
 		self.job.sigma_omega = self.job.omega
 		self._update_weights(new_weights)
 		self.job.job_type = JobTypes.JOB_COMM.name
-		self.job.set_key("test")
+		self.job.key = "test"
 		return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
 
 	def _done_communicating(self, dmlresult_obj):

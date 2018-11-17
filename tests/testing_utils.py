@@ -13,7 +13,7 @@ def make_communicate_job(key, weights):
         key,
         "keras"
     )
-    communicate_job.set_key(key)
+    communicate_job.key = key
     return communicate_job
 
 def make_model_json():
