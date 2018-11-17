@@ -6,9 +6,9 @@ from core.fed_avg_optimizer             import FederatedAveragingOptimizer
 from core.utils.dmljob                  import DMLJob
 from core.blockchain.blockchain_utils   import TxEnum
 
+
 logging.basicConfig(level=logging.DEBUG,
     format='[CommunicationManager] %(asctime)s %(levelname)s %(message)s')
-
 
 class CommunicationManager(object):
     """

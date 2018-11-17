@@ -6,6 +6,7 @@ from core.communication_manager import CommunicationManager
 from core.scheduler import DMLScheduler
 from core.blockchain.blockchain_gateway import BlockchainGateway
 
+
 def bootstrap():
     """
     Bootstraps the data provider unix service.

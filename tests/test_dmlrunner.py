@@ -16,7 +16,14 @@ from tests.testing_utils        import make_split_job
  
 
 session_filepaths = set()
-
+# @pytest.fixture(scope="function")
+# def cleanup():
+#     yield
+#     for session_filepath in session_filepaths:
+#         if os.path.isdir(session_filepath):
+#             shutil.rmtree(session_filepath)
+#     assert len((os.listdir('tests/artifacts/runner_scheduler/mnist/transformed/'))) == 0, \
+#         "Cleanup failed!"
 @pytest.fixture
 def config_manager():
     config_manager = ConfigurationManager()
