@@ -33,12 +33,20 @@ The following is an example for uploading a new DML Session to the IPFS, and sub
 
 ```
 python3
-> import ipfsapi
-> client = ipfsapi.connect('127.0.0.1','5001')
-> new_session_event = {<your DML session here>}
-> session = client.add_json(new_session_event)
+>>> import ipfsapi
+>>> client = ipfsapi.connect('127.0.0.1','5001')
+>>> from tests.testing_utils import make_serialized_job
+>>> serialized_job = make_serialized_job('tests/artifacts/integration/mnist')
+>>> new_session_event = {
+...         "KEY": None,
+...         "CONTENT": {
+...             "optimizer_params": {"listen_bound": 2, "total_bound": 2},
+...             "serialized_job": serialized_job
+...         }
+...     }
+>>> session = client.add_json(new_session_event)
 'QmVg5aAsSuv2HuUSYNEAKQCQHHPb25gZxQ36gaMSUdBTSX'
-> exit()
+>>> exit()
 curl --header "Content-Type: application/json"   --request POST   --data '{"CONTENT": "QmVg5aAsSuv2HuUSYNEAKQCQHHPb25gZxQ36gaMSUdBTSX",
 "KEY": "QmVg5aAsSuv2HuUSYNEAKQCQHHPb25gZxQ36gaMSUdBTSX" }'   http://localhost:3000/txs
 ```
