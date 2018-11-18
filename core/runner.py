@@ -349,9 +349,7 @@ class DMLRunner(object):
         """
         Average the weights in the job weighted by their omegas.
         """
-        # TODO: Figure out how to assert that this job actually has weights/new_weights.
-        # assert isinstance(job.weights, np.ndarray), "No weights supplied to average!"
-        # assert isinstance(job.new_weights, np.ndarray), "No new_weights supplied to average!"
+        assert list(job.new_weights), "No new_weights supplied to average!"
         assert job.omega, "No omega supplied to average!"
         assert job.sigma_omega, "No sigma_omega supplied to average!"
         averaged_weights = self._weighted_running_avg(job.weights, job.new_weights, job.sigma_omega, job.omega)

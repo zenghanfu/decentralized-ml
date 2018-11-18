@@ -24,7 +24,6 @@ def comments_test(config_filepath):
     secret_section_message = "; DO NOT MODIFY THIS SECTION"
     with open(config_filepath, "r") as f:
         lines = [line.strip() for line in f.readlines()]
-        print(lines)
         for secret_section in secret_sections:
             assert lines[lines.index("[{}]".format(secret_section)) - 1] == secret_section_message
 
