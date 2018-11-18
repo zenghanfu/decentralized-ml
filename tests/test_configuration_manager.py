@@ -20,7 +20,7 @@ def comments_test(config_filepath):
     """
     Check that comments were added to secret sections
     """
-    secret_sections = ['DB_CLIENT', 'BLOCKCHAIN']
+    secret_sections = ['DB_CLIENT']
     secret_section_message = "; DO NOT MODIFY THIS SECTION"
     with open(config_filepath, "r") as f:
         lines = [line.strip() for line in f.readlines()]

@@ -34,7 +34,7 @@ def new_session_event(mnist_filepath):
     new_session_event = {
         TxEnum.KEY.name: None,
         TxEnum.CONTENT.name: {
-            "optimizer_params": {"listen_bound": 2, "total_bound": 2},
+            "optimizer_params": {"num_averages_per_round": 2, "max_rounds": 2},
             "serialized_job": serialized_job
         }
     }
@@ -105,8 +105,7 @@ def test_federated_learning_two_clients_automated(new_session_event):
 def test_federated_learning_two_clients_manual(new_session_event):
     """
     Integration test that checks that one round of federated learning can be
-    COMPLETED with total_bound = 2, listen_bound = 1, a.k.a one client
-    training on its own.
+    COMPLETED with max_rounds = 2, num_averages_per_round = 2
 
     This is everything that happens in this test:
 
@@ -223,7 +222,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
     (22) Communication Manager receives DMLResult for averaging job from
         Scheduler
     (23) Communication Manager gives DMLResult to Optimizer
-    (24) Optimizer updates its weights to initialized model and increments listen_iterations
+    (24) Optimizer updates its weights to initialized model and increments num_averages_per_round
     (25) Optimizer tells Communication Manager to do nothing
     (26) Communication Manager receives new weights from Blockchain Gateway
     (27) Communication Manager gives new weights to Optimizer
@@ -232,7 +231,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
     (30) Communication Manager receives DMLResult for averaging job from
         Scheduler
     (31) Communication Manager gives DMLResult to Optimizer
-    (32) Optimizer updates its weights to initialized model and increments listen_iterations
+    (32) Optimizer updates its weights to initialized model and increments num_averages_per_round
     (33) Optimizer tells Communication Manager to schedule a training job since it's heard enough
 
     NOTE: Timeout errors can be as a result of Runners repeatedly erroring. Check logs for this.
@@ -294,7 +293,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
         time.sleep(0.1)
     assert len(scheduler.processed) == 5, "Averaging failed/not completed in time!"
     # we've only heard one set of new weights so our listen_iters are 1
-    assert communication_manager.optimizer.listen_iterations == 1, \
+    assert communication_manager.optimizer.num_averages_per_round == 1, \
         "Should have only listened once!"
     # now the communication manager should be idle
     scheduler.runners_run_next_jobs()
@@ -314,7 +313,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
         time.sleep(0.1)
     assert len(scheduler.processed) == 6, "Averaging failed/not completed in time!"
     # we've heard both sets of new weights so our listen_iters are 2
-    assert communication_manager.optimizer.listen_iterations == 0, \
+    assert communication_manager.optimizer.num_averages_per_round == 0, \
         "Either did not hear anything, or heard too much!"
     # now we should be ready to train
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name, \

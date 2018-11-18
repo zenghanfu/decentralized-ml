@@ -45,17 +45,22 @@ class FederatedAveragingOptimizer(object):
 			- `serialized_job`: the serialized DML Job
 
 			- `optimizer_params`: the optimizer parameters (dict) needed to
-			initialize this optimizer (should contain the listen_iterations and
-			listen_bound)
+			initialize this optimizer (should contain the max_rounds and
+			num_averages_per_round)
+		
+		num_averages_per_round(int): how many weights this optimizer needs to incorporate
+		into its weighted running average before it's "heard enough" 
+		and can move on to training
+		max_rounds(int): how many rounds of fed learning this optimizer wants to do
 		"""
 		logging.info("Setting up Optimizer")
 		serialized_job = initialization_payload.get('serialized_job')
 		self.job = deserialize_job(serialized_job)
 		optimizer_params = initialization_payload.get('optimizer_params')
-		self.listen_iterations = 0
-		self.listen_bound = optimizer_params.get('listen_bound')
-		self.total_iterations = 0
-		self.total_bound = optimizer_params.get('total_bound')
+		self.curr_averages_this_round = 0
+		self.num_averages_per_round = optimizer_params.get('num_averages_per_round')
+		self.curr_round = 0
+		self.max_rounds = optimizer_params.get('max_rounds')
 		self.initialization_complete = False
 		self.LEVEL1_CALLBACKS = {
 			RawEventTypes.JOB_DONE.name: self._handle_job_done,
@@ -173,15 +178,15 @@ class FederatedAveragingOptimizer(object):
 		self._update_weights(new_weights)
 		# Update our memory of the weights we've seen
 		self.job.sigma_omega = dmlresult_obj.job.sigma_omega + dmlresult_obj.job.omega
-		self.listen_iterations += 1
-		if self.listen_iterations >= self.listen_bound:
-			logging.info("DONE WITH ROUND {} OF FEDERATED LEARNING!".format(self.total_iterations))
+		self.curr_averages_this_round += 1
+		if self.curr_averages_this_round >= self.num_averages_per_round:
+			logging.info("DONE WITH ROUND {} OF FEDERATED LEARNING!".format(self.curr_round))
 			self.job.job_type = JobTypes.JOB_TRAIN.name
-			self.listen_iterations = 0
+			self.curr_averages_this_round = 0
 			# Reset sigma_omega for new round of learning
 			self.job.sigma_omega = 0
-			self.total_iterations += 1
-			if self.total_iterations >= self.total_bound:
+			self.curr_round += 1
+			if self.curr_round >= self.max_rounds:
 				return ActionableEventTypes.TERMINATE.name, self.job
 			else:
 				return ActionableEventTypes.SCHEDULE_JOBS.name, [self.job]
