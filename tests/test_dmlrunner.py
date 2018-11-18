@@ -15,15 +15,24 @@ from tests.testing_utils        import make_train_job, make_validate_job, make_h
 from tests.testing_utils        import make_split_job
  
 
-session_filepaths = set()
-# @pytest.fixture(scope="function")
-# def cleanup():
-#     yield
-#     for session_filepath in session_filepaths:
-#         if os.path.isdir(session_filepath):
-#             shutil.rmtree(session_filepath)
-#     assert len((os.listdir('tests/artifacts/runner_scheduler/mnist/transformed/'))) == 0, \
-#         "Cleanup failed!"
+@pytest.fixture(scope='session')
+def transformed_filepath():
+    return 'tests/artifacts/runner_scheduler/mnist'+'/transformed'
+
+@pytest.fixture(scope='session')
+def transformed_filepath_2():
+    return 'tests/artifacts/runner_scheduler/test'+'/transformed'
+
+@pytest.fixture(scope='session', autouse=True)
+def cleanup(transformed_filepath, transformed_filepath_2):
+    # Will be executed before the first test
+    yield
+    # Will be executed after the last test
+    if os.path.isdir(transformed_filepath):
+        shutil.rmtree(transformed_filepath)
+    if os.path.isdir(transformed_filepath_2):
+        shutil.rmtree(transformed_filepath_2)
+
 @pytest.fixture
 def config_manager():
     config_manager = ConfigurationManager()
@@ -57,10 +66,6 @@ def split_dmlresult_obj(config_manager, mnist_filepath):
                         )
     split_job.hyperparams['split'] = 0.75
     job_results = runner.run_job(split_job)
-    session_filepath = job_results.job.session_filepath
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
     return job_results
 
 @pytest.fixture
@@ -77,9 +82,6 @@ def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj,
                     datapoint_count
                 )
     result = runner.run_job(train_job)
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
     return result
 
 def test_dmlrunner_communicate_job(config_manager, train_dmlresult_obj):
@@ -89,10 +91,6 @@ def test_dmlrunner_communicate_job(config_manager, train_dmlresult_obj):
     comm_job.key = "test"
     result = runner.run_job(comm_job)
     assert result.results["receipt"]
-    session_filepath = train_dmlresult_obj.job.session_filepath
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
 
 def test_dmlrunner_initialize_job_returns_list_of_nparray(config_manager, init_dmlresult_obj):
     assert init_dmlresult_obj.status == 'successful'
@@ -101,10 +99,6 @@ def test_dmlrunner_initialize_job_returns_list_of_nparray(config_manager, init_d
     assert init_dmlresult_obj.job.job_type is JobTypes.JOB_INIT.name
     assert type(initial_weights) == list
     assert type(initial_weights[0]) == np.ndarray
-    session_filepath = init_dmlresult_obj.job.session_filepath
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
 
 def test_dmlrunner_transform_and_split( \
         config_manager, small_filepath):
@@ -128,10 +122,6 @@ def test_dmlrunner_transform_and_split( \
     assert len(train) == 6 and len(test) == 2, \
         "Train test split was not performed correctly."
 
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
-
 def test_dmlrunner_train_job_returns_weights_omega_and_stats( \
         config_manager, mnist_filepath, train_dmlresult_obj):
     result = train_dmlresult_obj
@@ -145,10 +135,6 @@ def test_dmlrunner_train_job_returns_weights_omega_and_stats( \
     assert type(new_weights[0]) == np.ndarray
     assert type(omega) == int or type(omega) == float
     assert type(train_stats) == dict
-
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
 
 def test_dmlrunner_same_train_job_with_split_1( \
         config_manager, mnist_filepath):
@@ -183,12 +169,6 @@ def test_dmlrunner_same_train_job_with_split_1( \
     assert type(omega) == int or type(omega) == float
     assert type(train_stats) == dict
 
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
-        
-
-
 def test_dmlrunner_validate_job_returns_stats( \
         config_manager, mnist_filepath, train_dmlresult_obj):
     model_json = make_model_json()
@@ -217,18 +197,11 @@ def test_dmlrunner_validate_job_returns_stats( \
     assert result.job.job_type is JobTypes.JOB_VAL.name
     assert type(val_stats) == dict
 
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
-
 def test_dmlrunner_initialize_job_weights_can_be_serialized(config_manager, init_dmlresult_obj):
     initial_weights = init_dmlresult_obj.results['weights']
     same_weights = deserialize_weights(serialize_weights(initial_weights))
     assert all(np.allclose(arr1, arr2) for arr1,arr2 in zip(same_weights, initial_weights)) 
     session_filepath = init_dmlresult_obj.job.session_filepath
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
 
 def test_dmlrunner_averaging_weights(config_manager, train_dmlresult_obj):
     runner = DMLRunner(config_manager)
@@ -241,14 +214,3 @@ def test_dmlrunner_averaging_weights(config_manager, train_dmlresult_obj):
     avg_job.sigma_omega = avg_job.omega
     averaged_weights = runner._average(avg_job).results['weights']
     assert all(np.allclose(arr1, arr2) for arr1,arr2 in zip(averaged_weights, initial_weights))
-    session_filepath = train_dmlresult_obj.job.session_filepath
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
-
-def test_cleanup():
-    for session_filepath in session_filepaths:
-        if os.path.isdir(session_filepath):
-            shutil.rmtree(session_filepath)
-    assert len((os.listdir('tests/artifacts/runner_scheduler/mnist/transformed/'))) == 0, \
-        "Cleanup failed!"

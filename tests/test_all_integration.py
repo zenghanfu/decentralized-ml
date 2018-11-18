@@ -17,8 +17,6 @@ from core.blockchain.blockchain_gateway import BlockchainGateway
 from core.blockchain.blockchain_utils   import setter, TxEnum
 
 
-session_filepaths = set()
-
 config_manager = ConfigurationManager()
 config_manager.bootstrap(
     config_filepath='tests/artifacts/integration/configuration.ini'
@@ -27,6 +25,18 @@ config_manager.bootstrap(
 @pytest.fixture
 def mnist_filepath():
     return 'tests/artifacts/integration/mnist'
+
+@pytest.fixture(scope='session')
+def transformed_filepath():
+    return 'tests/artifacts/integration/mnist'+'/transformed'
+
+@pytest.fixture(scope='session', autouse=True)
+def cleanup(transformed_filepath):
+    # Will be executed before the first test
+    yield
+    # Will be executed after the last test
+    if os.path.isdir(transformed_filepath):
+        shutil.rmtree(transformed_filepath)
 
 @pytest.fixture
 def new_session_event(mnist_filepath):
@@ -51,17 +61,6 @@ def setup_client(config_manager):
     blockchain_gateway.configure(config_manager, communication_manager)
     scheduler.configure(communication_manager)
     return communication_manager, blockchain_gateway, scheduler
-
-def cleanup_client(scheduler):
-    """
-    Add all the session filepaths (hopefully just 1) to the global list
-    so that test_cleanup can clean them up later
-    """
-    while scheduler.processed:
-        output = scheduler.processed.pop(0)
-        session_filepath = output.job.session_filepath
-        if session_filepath and os.path.isdir(session_filepath):
-            session_filepaths.add(output.job.session_filepath)
 
 def test_federated_learning_two_clients_automated(new_session_event):
     """
@@ -99,8 +98,6 @@ def test_federated_learning_two_clients_automated(new_session_event):
         result.job.job_type for result in scheduler_2.processed])    
     assert communication_manager.optimizer is None
     assert communication_manager_2.optimizer is None
-    cleanup_client(scheduler)
-    cleanup_client(scheduler_2)
 
 def test_federated_learning_two_clients_manual(new_session_event):
     """
@@ -178,8 +175,6 @@ def test_federated_learning_two_clients_manual(new_session_event):
     assert communication_manager.optimizer is None, "Should have terminated!"
     assert communication_manager_2.optimizer is None, "Should have terminated!"
     # and that completes one local round of federated learning!
-    cleanup_client(scheduler)
-    cleanup_client(scheduler_2)
 
 def test_communication_manager_can_initialize_and_train_model(mnist_filepath, new_session_event):
     """
@@ -293,7 +288,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
         time.sleep(0.1)
     assert len(scheduler.processed) == 5, "Averaging failed/not completed in time!"
     # we've only heard one set of new weights so our listen_iters are 1
-    assert communication_manager.optimizer.num_averages_per_round == 1, \
+    assert communication_manager.optimizer.curr_averages_this_round == 1, \
         "Should have only listened once!"
     # now the communication manager should be idle
     scheduler.runners_run_next_jobs()
@@ -313,17 +308,9 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
         time.sleep(0.1)
     assert len(scheduler.processed) == 6, "Averaging failed/not completed in time!"
     # we've heard both sets of new weights so our listen_iters are 2
-    assert communication_manager.optimizer.num_averages_per_round == 0, \
+    assert communication_manager.optimizer.curr_averages_this_round == 0, \
         "Either did not hear anything, or heard too much!"
     # now we should be ready to train
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name, \
         "Should be ready to train!"
     # and that completes one local round of federated learning!
-    cleanup_client(scheduler)
-
-def test_cleanup():
-    for session_filepath in session_filepaths:
-        if os.path.isdir(session_filepath):
-            shutil.rmtree(session_filepath)
-    assert len((os.listdir('tests/artifacts/integration/mnist/transformed/'))) == 0, \
-        "Cleanup failed!"

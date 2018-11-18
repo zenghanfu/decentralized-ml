@@ -30,6 +30,7 @@ def new_session_event(mnist_filepath):
         }
     }
     return new_session_event
+
 @pytest.fixture
 def mnist_filepath():
     return 'tests/artifacts/communication_manager/mnist'
@@ -40,7 +41,6 @@ def test_communication_manager_can_be_initialized():
     """
     communication_manager = CommunicationManager()
     assert communication_manager
-
 
 def test_communication_manager_fails_if_not_configured(new_session_event):
     """
@@ -57,7 +57,6 @@ def test_communication_manager_fails_if_not_configured(new_session_event):
     except Exception as e:
         assert str(e) == "Communication Manager needs to be configured first!"
 
-
 def test_communication_manager_creates_new_sessions(new_session_event):
     """
     Ensures that upon receiving an initialization job, the Communication Manager
@@ -72,7 +71,6 @@ def test_communication_manager_creates_new_sessions(new_session_event):
         new_session_event
     )
     assert communication_manager.optimizer
-
 
 def test_communication_manager_can_inform_new_job_to_the_optimizer():
     """
@@ -105,7 +103,6 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
     assert optimizer_job.framework_type == true_job.framework_type
     assert optimizer_job.hyperparams == true_job.hyperparams
     assert optimizer_job.label_column_name == true_job.label_column_name
-
 
 # NOTE: The following are tests that we will implement soon.
 

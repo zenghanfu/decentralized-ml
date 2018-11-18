@@ -36,6 +36,24 @@ def initialization_payload(small_filepath):
 def mnist_filepath():
     return 'tests/artifacts/fed_avg_optimizer/mnist'
 
+@pytest.fixture(scope='session')
+def transformed_filepath():
+    return 'tests/artifacts/fed_avg_optimizer/mnist'+'/transformed'
+
+@pytest.fixture(scope='session')
+def transformed_filepath_2():
+    return 'tests/artifacts/fed_avg_optimizer/test'+'/transformed'
+
+@pytest.fixture(scope='session', autouse=True)
+def cleanup(transformed_filepath, transformed_filepath_2):
+    # Will be executed before the first test
+    yield
+    # Will be executed after the last test
+    if os.path.isdir(transformed_filepath):
+        shutil.rmtree(transformed_filepath)
+    if os.path.isdir(transformed_filepath_2):
+        shutil.rmtree(transformed_filepath_2)
+
 @pytest.fixture
 def small_filepath():
     return 'tests/artifacts/fed_avg_optimizer/test'
@@ -57,10 +75,6 @@ def split_dmlresult_obj(config_manager, mnist_filepath):
                         )
     split_job.hyperparams['split'] = 0.75
     job_results = runner.run_job(split_job)
-    session_filepath = job_results.results['session_filepath']
-    # Clean up
-    if session_filepath and os.path.isdir(session_filepath):
-        session_filepaths.add(session_filepath)
     return job_results
 
 @pytest.fixture
@@ -79,7 +93,6 @@ def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj)
     result = runner.run_job(train_job)
     return result
 
-
 def test_optimizer_fails_on_wrong_event_type(initialization_payload):
     optimizer = FederatedAveragingOptimizer(initialization_payload)
     try:
@@ -89,14 +102,12 @@ def test_optimizer_fails_on_wrong_event_type(initialization_payload):
     except Exception as e:
         assert str(e) == "Invalid callback passed!"
 
-
 def test_optimizer_can_kickoff(initialization_payload):
     optimizer = FederatedAveragingOptimizer(initialization_payload)
     event_type, job_arr = optimizer.kickoff()
     assert event_type == ActionableEventTypes.SCHEDULE_JOBS.name
     for job in job_arr:
         assert job.job_type == JobTypes.JOB_INIT.name or job.job_type == JobTypes.JOB_SPLIT.name
-
 
 def test_optimizer_schedules_training_after_initialization(initialization_payload, init_dmlresult_obj, split_dmlresult_obj):
     optimizer = FederatedAveragingOptimizer(initialization_payload)
@@ -109,7 +120,6 @@ def test_optimizer_schedules_training_after_initialization(initialization_payloa
     for job in job_arr:
         assert job.job_type == JobTypes.JOB_TRAIN.name
 
-
 def test_optimizer_schedules_communication_after_training(initialization_payload, train_dmlresult_obj):
     optimizer = FederatedAveragingOptimizer(initialization_payload)
     event_type, job_arr = optimizer.ask(RawEventTypes.JOB_DONE.name, train_dmlresult_obj)
@@ -118,10 +128,3 @@ def test_optimizer_schedules_communication_after_training(initialization_payload
     assert event_type == ActionableEventTypes.SCHEDULE_JOBS.name
     for job in job_arr:
         assert job.job_type == JobTypes.JOB_COMM.name
-
-def test_cleanup():
-    for session_filepath in session_filepaths:
-        if os.path.isdir(session_filepath):
-            shutil.rmtree(session_filepath)
-    assert len((os.listdir('tests/artifacts/fed_avg_optimizer/mnist/transformed/'))) == 0, \
-        "Cleanup failed!"
