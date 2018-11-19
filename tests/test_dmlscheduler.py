@@ -12,18 +12,20 @@ from core.configuration         import ConfigurationManager
 from tests.testing_utils        import (make_initialize_job, make_model_json, \
                                         make_split_job, make_communicate_job)
 
-# NOTE: This test does not use fixtures because fixtures will hide any malignant 
-# transient behavior of the Scheduler, as we found out the hard way. Instead, we
-# call scheduler.reset()
+@pytest.fixture(scope='session')
+def config_manager():
+    config_manager = ConfigurationManager()
+    config_manager.bootstrap(
+        config_filepath='tests/artifacts/runner_scheduler/configuration.ini'
+    )
+    return config_manager
 
-config_manager = ConfigurationManager()
-config_manager.bootstrap(
-    config_filepath='tests/artifacts/runner_scheduler/configuration.ini'
-)
-
-config = config_manager.get_config()
-ipfs_client = ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
-                        config.getint('BLOCKCHAIN', 'ipfs_port'))
+@pytest.fixture(scope='session')
+def ipfs_client(config_manager):
+    config = config_manager.get_config()
+    ipfs_client = ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
+                            config.getint('BLOCKCHAIN', 'ipfs_port'))
+    return ipfs_client
 
 
 @pytest.fixture(scope='session')
@@ -34,16 +36,24 @@ class MockCommunicationManager:
     def inform(self, dummy1, dummy2):
         pass
 
-communication_manager = MockCommunicationManager()
+@pytest.fixture(scope='session')
+def communication_manager():
+    communication_manager = MockCommunicationManager()
+    return communication_manager
 
-scheduler = DMLScheduler(config_manager)
-scheduler.configure(communication_manager, ipfs_client)
+# NOTE: This is scope=function and not scope=session because of multiprocessing.
+# If it's scope=session, tests will get interrupted by each other and then the assertions
+# will fail because more jobs will be processed than they expected.
+@pytest.fixture
+def scheduler(config_manager, ipfs_client, communication_manager):
+    scheduler = DMLScheduler(config_manager)
+    scheduler.configure(communication_manager, ipfs_client)
+    return scheduler
 
-def test_dmlscheduler_sanity():
+def test_dmlscheduler_sanity(scheduler):
     """
     Check that the scheduling/running functionality is maintained.
     """
-    scheduler.reset()
     model_json = make_model_json()
     initialize_job = make_initialize_job(model_json)
     scheduler.add_job(initialize_job)
@@ -57,11 +67,10 @@ def test_dmlscheduler_sanity():
     assert type(initial_weights) == list
     assert type(initial_weights[0]) == np.ndarray
 
-def test_dmlscheduler_communicate():
+def test_dmlscheduler_communicate(scheduler):
     """
     Test that the Scheduler can schedule/run Communicate Jobs.
     """
-    scheduler.reset()
     m = 3
     for _ in range(m):
         communicate_job = make_communicate_job("testkey", "testweights")
@@ -75,11 +84,10 @@ def test_dmlscheduler_communicate():
         "Jobs {} failed/not completed in time!".format([
         result.job.job_type for result in scheduler.processed])
 
-def test_dmlscheduler_arbitrary_scheduling():
+def test_dmlscheduler_arbitrary_scheduling(scheduler):
     """
     Manually schedule events and check that all jobs are completed.
     """
-    scheduler.reset()
     model_json = make_model_json()
     first = make_initialize_job(model_json)
     second = make_initialize_job(model_json)
@@ -106,11 +114,10 @@ def test_dmlscheduler_arbitrary_scheduling():
         assert type(initial_weights) == list
         assert type(initial_weights[0]) == np.ndarray
 
-def test_dmlscheduler_cron():
+def test_dmlscheduler_cron(scheduler):
     """
     Test that the scheduler's cron works.
     """
-    scheduler.reset()
     model_json = make_model_json()
     m = 2
     for _ in range(m):
