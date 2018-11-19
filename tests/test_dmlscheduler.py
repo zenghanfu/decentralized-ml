@@ -12,17 +12,15 @@ from core.configuration         import ConfigurationManager
 from tests.testing_utils        import (make_initialize_job, make_model_json, \
                                         make_split_job, make_communicate_job)
 
+# NOTE: This test does not use fixtures because fixtures will hide any malignant 
+# transient behavior of the Scheduler, as we found out the hard way. Instead, we
+# call scheduler.reset()
 
-# @pytest.fixture(scope='session')
-# def config_manager():
 config_manager = ConfigurationManager()
 config_manager.bootstrap(
     config_filepath='tests/artifacts/runner_scheduler/configuration.ini'
 )
-    # return config_manager
 
-# @pytest.fixture(scope='session')
-# def ipfs_client(config_manager):
 config = config_manager.get_config()
 ipfs_client = ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
                         config.getint('BLOCKCHAIN', 'ipfs_port'))
@@ -36,15 +34,10 @@ class MockCommunicationManager:
     def inform(self, dummy1, dummy2):
         pass
 
-# @pytest.fixture()
-# def communication_manager():
 communication_manager = MockCommunicationManager()
-    # return communication_manager
-# @pytest.fixture()
-# def scheduler(communication_manager, config_manager, ipfs_client):
+
 scheduler = DMLScheduler(config_manager)
 scheduler.configure(communication_manager, ipfs_client)
-    # return scheduler
 
 def test_dmlscheduler_sanity():
     """
@@ -64,7 +57,6 @@ def test_dmlscheduler_sanity():
     assert type(initial_weights) == list
     assert type(initial_weights[0]) == np.ndarray
 
-# TODO: The below test transiently fails. Why???
 def test_dmlscheduler_communicate():
     """
     Test that the Scheduler can schedule/run Communicate Jobs.
@@ -83,7 +75,6 @@ def test_dmlscheduler_communicate():
         "Jobs {} failed/not completed in time!".format([
         result.job.job_type for result in scheduler.processed])
 
-# TODO: Uncomment to see a bug manifest!
 def test_dmlscheduler_arbitrary_scheduling():
     """
     Manually schedule events and check that all jobs are completed.
