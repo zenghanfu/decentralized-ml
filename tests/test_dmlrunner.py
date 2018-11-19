@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import os
 import shutil
+import ipfsapi
 
 from core.runner                import DMLRunner
 from core.configuration         import ConfigurationManager
@@ -33,7 +34,7 @@ def cleanup(transformed_filepath, transformed_filepath_2):
     if os.path.isdir(transformed_filepath_2):
         shutil.rmtree(transformed_filepath_2)
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def config_manager():
     config_manager = ConfigurationManager()
     config_manager.bootstrap(
@@ -41,22 +42,28 @@ def config_manager():
     )
     return config_manager
 
-@pytest.fixture
+@pytest.fixture(scope='session')
+def ipfs_client(config_manager):
+    config = config_manager.get_config()
+    return ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
+                            config.getint('BLOCKCHAIN', 'ipfs_port'))
+
+@pytest.fixture(scope='session')
 def mnist_filepath():
     return 'tests/artifacts/runner_scheduler/mnist'
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def small_filepath():
     return 'tests/artifacts/runner_scheduler/test'
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def init_dmlresult_obj(config_manager, small_filepath):
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(make_model_json(), small_filepath)
     result = runner.run_job(initialize_job)
     return result
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def split_dmlresult_obj(config_manager, mnist_filepath):
     model_json = make_model_json()
     runner = DMLRunner(config_manager)
@@ -68,7 +75,7 @@ def split_dmlresult_obj(config_manager, mnist_filepath):
     job_results = runner.run_job(split_job)
     return job_results
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj, small_filepath):
     runner = DMLRunner(config_manager)
     initial_weights = init_dmlresult_obj.results['weights']
@@ -84,9 +91,10 @@ def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj,
     result = runner.run_job(train_job)
     return result
 
-def test_dmlrunner_communicate_job(config_manager, train_dmlresult_obj):
+def test_dmlrunner_communicate_job(config_manager, train_dmlresult_obj, ipfs_client):
     runner = DMLRunner(config_manager)
-    comm_job = train_dmlresult_obj.job
+    runner.configure(ipfs_client)
+    comm_job = train_dmlresult_obj.job.copy_constructor()
     comm_job.job_type = JobTypes.JOB_COMM.name
     comm_job.key = "test"
     result = runner.run_job(comm_job)
@@ -205,7 +213,7 @@ def test_dmlrunner_initialize_job_weights_can_be_serialized(config_manager, init
 
 def test_dmlrunner_averaging_weights(config_manager, train_dmlresult_obj):
     runner = DMLRunner(config_manager)
-    avg_job = train_dmlresult_obj.job
+    avg_job = train_dmlresult_obj.job.copy_constructor()
     initial_weights = train_dmlresult_obj.results['weights']
     assert initial_weights
     avg_job.weights = initial_weights

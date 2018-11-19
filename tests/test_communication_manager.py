@@ -2,6 +2,7 @@ import tests.context
 
 import pytest
 import time
+import ipfsapi
 
 from core.communication_manager         import CommunicationManager
 from core.runner                        import DMLRunner
@@ -14,12 +15,22 @@ from core.utils.keras                   import serialize_weights
 from core.blockchain.blockchain_utils   import TxEnum
 
 
-config_manager = ConfigurationManager()
-config_manager.bootstrap(
-    config_filepath='tests/artifacts/communication_manager/configuration.ini'
-)
+@pytest.fixture(scope='session')
+def config_manager():
+    config_manager = ConfigurationManager()
+    config_manager.bootstrap(
+        config_filepath='tests/artifacts/communication_manager/configuration.ini'
+    )
+    return config_manager
 
-@pytest.fixture
+@pytest.fixture(scope='session')
+def ipfs_client(config_manager):
+    config = config_manager.get_config()
+    return ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
+                            config.getint('BLOCKCHAIN', 'ipfs_port'))
+
+
+@pytest.fixture(scope='session')
 def new_session_event(mnist_filepath):
     serialized_job = make_serialized_job(mnist_filepath)
     new_session_event = {
@@ -31,7 +42,7 @@ def new_session_event(mnist_filepath):
     }
     return new_session_event
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def mnist_filepath():
     return 'tests/artifacts/communication_manager/mnist'
 
@@ -57,7 +68,7 @@ def test_communication_manager_fails_if_not_configured(new_session_event):
     except Exception as e:
         assert str(e) == "Communication Manager needs to be configured first!"
 
-def test_communication_manager_creates_new_sessions(new_session_event):
+def test_communication_manager_creates_new_sessions(new_session_event, config_manager, ipfs_client):
     """
     Ensures that upon receiving an initialization job, the Communication Manager
     will make an optimizer.
@@ -65,14 +76,14 @@ def test_communication_manager_creates_new_sessions(new_session_event):
     communication_manager = CommunicationManager()
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
-    scheduler.configure(communication_manager)
+    scheduler.configure(communication_manager, ipfs_client)
     communication_manager.inform(
         MessageEventTypes.NEW_SESSION.name,
         new_session_event
     )
     assert communication_manager.optimizer
 
-def test_communication_manager_can_inform_new_job_to_the_optimizer():
+def test_communication_manager_can_inform_new_job_to_the_optimizer(config_manager, ipfs_client):
     """
     Ensures that Communication Manager can tell the optimizer of something,
     and that the job will transfer correctly.
@@ -80,7 +91,7 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer():
     communication_manager = CommunicationManager()
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
-    scheduler.configure(communication_manager)
+    scheduler.configure(communication_manager, ipfs_client)
     true_job = make_initialize_job(make_model_json())
     true_job.hyperparams['epochs'] = 10
     true_job.hyperparams['batch_size'] = 128

@@ -1,10 +1,9 @@
 import logging
 import time
 import json
-from collections import deque
 from threading import Event, Timer
 import multiprocessing
-from multiprocessing import Pool
+from multiprocessing import Pool, Queue
 
 from core.runner import DMLRunner
 from core.configuration import ConfigurationManager
@@ -32,7 +31,6 @@ class DMLScheduler(object):
 		Initializes the instance.
 		"""
 		logging.info("Setting up scheduler...")
-		self.queue = deque()
 		self.event = Event()
 		self.processed = []
 		self.history = []
@@ -42,7 +40,7 @@ class DMLScheduler(object):
 		self.frequency_in_mins = config.getint("SCHEDULER", "frequency_in_mins")
 		self.num_runners = config.getint("SCHEDULER", "num_runners")
 		self.max_tries = config.getint("SCHEDULER", "max_tries")
-
+		self.queue = Queue(self.num_runners)
 		multiprocessing.set_start_method('spawn', force=True)
 		self.pool = Pool(processes=self.num_runners)
 		self.runners = [DMLRunner(config_manager) for _ in range(self.num_runners)]
@@ -50,12 +48,13 @@ class DMLScheduler(object):
 		self.current_results = [None for _ in range(self.num_runners)]
 		logging.info("Scheduler is set up!")
 
-	def configure(self, communication_manager):
+	def configure(self, communication_manager, ipfs_client):
 		"""
 		Configures the scheduler with the Communication Manager so that it can
 		inform it of the jobs it schedules after they run successfully.
 		"""
 		self.communication_manager = communication_manager
+		[runner.configure(ipfs_client) for runner in self.runners]
 
 	def add_job(self, dml_job):
 		"""
@@ -63,7 +62,7 @@ class DMLScheduler(object):
 		"""
 		assert type(dml_job) is DMLJob, "Job is not of type DMLJob."
 		logging.info("Scheduling job...{}".format(dml_job.job_type))
-		self.queue.append(dml_job)
+		self.queue.put(dml_job)
 
 	def start_cron(self, period_in_mins=None):
 		"""
@@ -88,7 +87,7 @@ class DMLScheduler(object):
 		Resets the scheduler.
 		"""
 		logging.info("Resetting scheduler...")
-		self.queue = deque()
+		self.queue = Queue()
 		self.processed = []
 		if reset_history:
 			self.history = []
@@ -138,9 +137,9 @@ class DMLScheduler(object):
 						self.current_jobs[i] = None
 						self.current_results[i] = None
 			# Check if there's any queued jobs and schedule them.
-			if self.queue:
+			if not self.queue.empty():
 				# If there's something to be scheduled...
-				job_to_run = self.queue.popleft()
+				job_to_run = self.queue.get(block=False)
 				job_to_run.num_tries_left = self.max_tries
 				self.current_jobs[i] = job_to_run
 				logging.info("Running job for real...")

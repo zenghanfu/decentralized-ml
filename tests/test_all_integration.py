@@ -4,6 +4,7 @@ import time
 from multiprocessing import Process
 import os
 import shutil
+import ipfsapi
 
 from core.communication_manager         import CommunicationManager
 from core.runner                        import DMLRunner
@@ -17,12 +18,21 @@ from core.blockchain.blockchain_gateway import BlockchainGateway
 from core.blockchain.blockchain_utils   import setter, TxEnum
 
 
-config_manager = ConfigurationManager()
-config_manager.bootstrap(
-    config_filepath='tests/artifacts/integration/configuration.ini'
-)
+@pytest.fixture(scope='session')
+def config_manager():
+    config_manager = ConfigurationManager()
+    config_manager.bootstrap(
+        config_filepath='tests/artifacts/integration/configuration.ini'
+    )
+    return config_manager
 
-@pytest.fixture
+@pytest.fixture(scope='session')
+def ipfs_client(config_manager):
+    config = config_manager.get_config()
+    return ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
+                            config.getint('BLOCKCHAIN', 'ipfs_port'))
+
+@pytest.fixture(scope='session')
 def mnist_filepath():
     return 'tests/artifacts/integration/mnist'
 
@@ -38,7 +48,7 @@ def cleanup(transformed_filepath):
     if os.path.isdir(transformed_filepath):
         shutil.rmtree(transformed_filepath)
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def new_session_event(mnist_filepath):
     serialized_job = make_serialized_job(mnist_filepath)
     new_session_event = {
@@ -50,7 +60,7 @@ def new_session_event(mnist_filepath):
     }
     return new_session_event
 
-def setup_client(config_manager):
+def setup_client(config_manager, client):
     """
     Set up and return communication_manager, blockchain_gateway, scheduler
     """
@@ -58,23 +68,23 @@ def setup_client(config_manager):
     blockchain_gateway = BlockchainGateway()
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
-    blockchain_gateway.configure(config_manager, communication_manager)
-    scheduler.configure(communication_manager)
+    blockchain_gateway.configure(config_manager, communication_manager, client)
+    scheduler.configure(communication_manager, client)
     return communication_manager, blockchain_gateway, scheduler
 
-def test_federated_learning_two_clients_automated(new_session_event):
+def test_federated_learning_two_clients_automated(new_session_event, config_manager, ipfs_client):
     """
     Tests fully automated federated learning.
     """
     # Set up first client
-    communication_manager, blockchain_gateway, scheduler = setup_client(config_manager)
+    communication_manager, blockchain_gateway, scheduler = setup_client(config_manager, ipfs_client)
     # Set up second client
-    communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager)
+    communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager, ipfs_client)
     # (0) Someone sends decentralized learning event to the chain
     tx_receipt = setter(
-        client=blockchain_gateway.client, 
+        client=blockchain_gateway._client,
         key=None, 
-        port=blockchain_gateway.port, 
+        port=blockchain_gateway._port,
         value=new_session_event, 
         flag=True
     )
@@ -99,7 +109,7 @@ def test_federated_learning_two_clients_automated(new_session_event):
     assert communication_manager.optimizer is None
     assert communication_manager_2.optimizer is None
 
-def test_federated_learning_two_clients_manual(new_session_event):
+def test_federated_learning_two_clients_manual(new_session_event, config_manager, ipfs_client):
     """
     Integration test that checks that one round of federated learning can be
     COMPLETED with max_rounds = 2, num_averages_per_round = 2
@@ -108,12 +118,12 @@ def test_federated_learning_two_clients_manual(new_session_event):
 
     """
     # Set up first client
-    communication_manager, blockchain_gateway, scheduler = setup_client(config_manager)
+    communication_manager, blockchain_gateway, scheduler = setup_client(config_manager, ipfs_client)
     # Set up second client
-    communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager)
+    communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager, ipfs_client)
     # set up new session
     # (0) Someone sends decentralized learning event to the chain
-    tx_receipt = setter(blockchain_gateway.client, None, blockchain_gateway.port, new_session_event, True)
+    tx_receipt = setter(blockchain_gateway._client, None, blockchain_gateway._port, new_session_event, True)
     assert tx_receipt
     # (1) Gateway_1 listens for the event
     blockchain_gateway._listen(blockchain_gateway._handle_new_session_creation, 
@@ -176,13 +186,10 @@ def test_federated_learning_two_clients_manual(new_session_event):
     assert communication_manager_2.optimizer is None, "Should have terminated!"
     # and that completes one local round of federated learning!
 
-def test_communication_manager_can_initialize_and_train_model(mnist_filepath, new_session_event):
+def test_communication_manager_integration(mnist_filepath, new_session_event, config_manager, ipfs_client):
     """
     Integration test that checks that the Communication Manager can initialize,
     train, (and soon communicate) a model, and average a model.
-
-    NOTE: This should be renamed after the COMM PR.
-
     This is everything that happens in this test:
 
     (1) Communication Manager receives the packet it's going to receive from
@@ -200,16 +207,12 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
          Scheduler
     (11) Communication Manager gives DMLResult to Optimizer
     (12) Optimizer updates its weights to trained weights
-
-    NOTE: These next steps are not implemented yet! (They need the COMM PR.)
     (13) Optimizer tells Communication Manager to schedule a communication job
     (14) Communication Manager schedules communication job
     (15) Communication Manager receives DMLResult for communication job from
          Scheduler
     (16) Communication Manager gives DMLResult to Optimizer
     (17) Optimizer tells the Communication Manager to do nothing
-
-    NOTE: Next steps are specific to Averaging PR
     (18) Communication Manager receives new weights from Blockchain Gateway
     (19) Communication Manager gives new weights to Optimizer
     (20) Optimizer tells Communication Manager to schedule an averaging job
@@ -231,10 +234,7 @@ def test_communication_manager_can_initialize_and_train_model(mnist_filepath, ne
 
     NOTE: Timeout errors can be as a result of Runners repeatedly erroring. Check logs for this.
     """
-    communication_manager = CommunicationManager()
-    scheduler = DMLScheduler(config_manager)
-    communication_manager.configure(scheduler)
-    scheduler.configure(communication_manager)
+    communication_manager, blockchain_gateway, scheduler = setup_client(config_manager, ipfs_client)
     communication_manager.inform(
         MessageEventTypes.NEW_SESSION.name,
         new_session_event

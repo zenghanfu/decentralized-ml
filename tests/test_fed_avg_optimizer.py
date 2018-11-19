@@ -17,7 +17,7 @@ from data.iterators import count_datapoints
 
 session_filepaths = set()
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def config_manager():
     config_manager = ConfigurationManager()
     config_manager.bootstrap(
@@ -25,14 +25,14 @@ def config_manager():
     )
     return config_manager
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def initialization_payload(small_filepath):
     return {
         "optimizer_params": {"listen_bound": 2, "listen_iterations": 0},
         "serialized_job": make_serialized_job(small_filepath)
     }
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def mnist_filepath():
     return 'tests/artifacts/fed_avg_optimizer/mnist'
 
@@ -54,18 +54,18 @@ def cleanup(transformed_filepath, transformed_filepath_2):
     if os.path.isdir(transformed_filepath_2):
         shutil.rmtree(transformed_filepath_2)
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def small_filepath():
     return 'tests/artifacts/fed_avg_optimizer/test'
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def init_dmlresult_obj(config_manager, small_filepath):
     runner = DMLRunner(config_manager)
     initialize_job = make_initialize_job(make_model_json(), small_filepath)
     result = runner.run_job(initialize_job)
     return result
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def split_dmlresult_obj(config_manager, mnist_filepath):
     model_json = make_model_json()
     runner = DMLRunner(config_manager)
@@ -77,7 +77,7 @@ def split_dmlresult_obj(config_manager, mnist_filepath):
     job_results = runner.run_job(split_job)
     return job_results
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def train_dmlresult_obj(config_manager, split_dmlresult_obj, init_dmlresult_obj):
     runner = DMLRunner(config_manager)
     initial_weights = init_dmlresult_obj.results['weights']
@@ -111,8 +111,10 @@ def test_optimizer_can_kickoff(initialization_payload):
 
 def test_optimizer_schedules_training_after_initialization(initialization_payload, init_dmlresult_obj, split_dmlresult_obj):
     optimizer = FederatedAveragingOptimizer(initialization_payload)
-    event_type, job_arr = optimizer.ask(RawEventTypes.JOB_DONE.name, init_dmlresult_obj)
     initial_weights = init_dmlresult_obj.results['weights']
+    init_dmlresult_obj.job = init_dmlresult_obj.job.copy_constructor()
+    split_dmlresult_obj.job = split_dmlresult_obj.job.copy_constructor()
+    event_type, job_arr = optimizer.ask(RawEventTypes.JOB_DONE.name, init_dmlresult_obj)
     assert all(np.allclose(arr1, arr2) for arr1,arr2 in zip(optimizer.job.weights, initial_weights))    
     assert event_type == ActionableEventTypes.NOTHING.name
     event_type, job_arr = optimizer.ask(RawEventTypes.JOB_DONE.name, split_dmlresult_obj)
@@ -122,8 +124,9 @@ def test_optimizer_schedules_training_after_initialization(initialization_payloa
 
 def test_optimizer_schedules_communication_after_training(initialization_payload, train_dmlresult_obj):
     optimizer = FederatedAveragingOptimizer(initialization_payload)
-    event_type, job_arr = optimizer.ask(RawEventTypes.JOB_DONE.name, train_dmlresult_obj)
     trained_weights = train_dmlresult_obj.results['weights']
+    train_dmlresult_obj.job = train_dmlresult_obj.job.copy_constructor()
+    event_type, job_arr = optimizer.ask(RawEventTypes.JOB_DONE.name, train_dmlresult_obj)
     assert all(np.allclose(arr1, arr2) for arr1,arr2 in zip(optimizer.job.weights, trained_weights))
     assert event_type == ActionableEventTypes.SCHEDULE_JOBS.name
     for job in job_arr:

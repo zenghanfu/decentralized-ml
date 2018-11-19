@@ -48,10 +48,7 @@ class DMLRunner(object):
         config = config_manager.get_config()
         self.iden = str(uuid.uuid4())[:8]
         self.config = dict(config.items("RUNNER"))
-        self.client = ipfsapi.connect(
-            config.get('BLOCKCHAIN', 'host'), 
-            config.getint('BLOCKCHAIN', 'ipfs_port'))
-        self.port = config.getint('BLOCKCHAIN', 'http_port')
+        self._port = config.getint('BLOCKCHAIN', 'http_port')
         self.JOB_CALLBACKS = {
             JobTypes.JOB_TRAIN.name: self._train,
             JobTypes.JOB_INIT.name: self._initialize,
@@ -60,6 +57,12 @@ class DMLRunner(object):
             JobTypes.JOB_AVG.name: self._average,
             JobTypes.JOB_COMM.name: self._communicate,
         }
+    
+    def configure(self, ipfs_client):
+        """
+        Sets up IPFS client for _communicate.
+        """
+        self._client = ipfs_client
 
     def run_job(self, job):
         """
@@ -258,9 +261,9 @@ class DMLRunner(object):
         IPFS client, puts the tx_receipt in DMLResult.
         """
         tx_receipt = setter(
-            client=self.client,
+            client=self._client,
             key = job.key,
-            port = self.port,
+            port = self._port,
             value = serialize_job(job),
         )
         results = DMLResult(
