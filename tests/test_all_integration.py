@@ -16,6 +16,7 @@ from core.utils.enums                   import RawEventTypes, JobTypes, MessageE
 from core.utils.keras                   import serialize_weights
 from core.blockchain.blockchain_gateway import BlockchainGateway
 from core.blockchain.blockchain_utils   import setter, TxEnum
+from core.dataset_manager               import DatasetManager
 
 
 @pytest.fixture(scope='session')
@@ -67,7 +68,8 @@ def setup_client(config_manager, client):
     communication_manager = CommunicationManager()
     blockchain_gateway = BlockchainGateway()
     scheduler = DMLScheduler(config_manager)
-    communication_manager.configure(scheduler)
+    dataset_manager = DatasetManager(config_manager)
+    communication_manager.configure(scheduler, dataset_manager)
     blockchain_gateway.configure(config_manager, communication_manager, client)
     scheduler.configure(communication_manager, client)
     return communication_manager, blockchain_gateway, scheduler

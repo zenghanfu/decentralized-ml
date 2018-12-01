@@ -32,6 +32,7 @@ class CommunicationManager(object):
                               # one session at a time, the class is only
                               # concerned with one optimizer.
         self.scheduler = None
+        self.dataset_manager = None
         # NOTE: This should be updated when Gateway PR is merged and we make
         # the Communication Manager error-handle out of order/missed messages.
         self.EVENT_TYPE_2_CALLBACK = {
@@ -44,7 +45,7 @@ class CommunicationManager(object):
 
     # Setup Methods
 
-    def configure(self, scheduler):
+    def configure(self, scheduler, dataset_manager):
         """
         Configures the Communication Manager so that it can submit jobs to the
         Scheduler.
@@ -52,6 +53,9 @@ class CommunicationManager(object):
         logging.info("Configuring the Communication Manager...")
         self.scheduler = scheduler
         logging.info("Communication Manager is configured!")
+        logging.info("Configuring the Dataset Manager...")
+        self.dataset_manager = dataset_manager
+        logging.info("Dataset Manager is configured!")
 
     # Public methods
 
@@ -90,9 +94,14 @@ class CommunicationManager(object):
         # NOTE: We removed the 'optimizer_type' argument since for the MVP we're
         # only considering the 'FederatedAveragingOptimizer' for now.
         # TODO: We need to incorporate session id's when we're ready.
+        if not self.dataset_manager:
+            raise Exception("Communication Manager needs to be configured first!")
         logging.info("New optimizer session is being set up...")
         initialization_payload = payload.get(TxEnum.CONTENT.name)
-        self.optimizer = FederatedAveragingOptimizer(initialization_payload)
+        self.optimizer = FederatedAveragingOptimizer(
+                            initialization_payload,
+                            self.dataset_manager
+                        )
         logging.info("Optimizer session is set! Now doing kickoff...")
         event_type, payload = self.optimizer.kickoff()
         callback = callback_handler_no_default(

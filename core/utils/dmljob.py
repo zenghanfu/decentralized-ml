@@ -21,6 +21,7 @@ class DMLJob(object):
         weights=None,
         hyperparams=None,
         label_column_name=None,
+        uuid=None,
         raw_filepath=None,
         session_filepath=None,
         datapoint_count=None
@@ -63,6 +64,7 @@ class DMLJob(object):
         self.omega = None
         self.sigma_omega = None
         self.new_weights = None
+        self.uuid = uuid
         self.raw_filepath = raw_filepath
         self.session_filepath = session_filepath
         self.datapoint_count = datapoint_count
