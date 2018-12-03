@@ -13,7 +13,7 @@ from tests.testing_utils                import make_serialized_job, serialize_jo
 from core.utils.enums                   import RawEventTypes, JobTypes, MessageEventTypes
 from core.utils.keras                   import serialize_weights
 from core.blockchain.blockchain_utils   import TxEnum
-
+from core.utils.dmljob                  import deserialize_job
 
 @pytest.fixture(scope='session')
 def config_manager():
@@ -34,9 +34,9 @@ def ipfs_client(config_manager):
 def new_session_event(mnist_filepath):
     serialized_job = make_serialized_job(mnist_filepath)
     new_session_event = {
-        TxEnum.KEY.name: None,
+        TxEnum.KEY.name: MessageEventTypes.NEW_SESSION.name,
         TxEnum.CONTENT.name: {
-            "optimizer_params": {"listen_bound": 2, "total_bound": 2},
+            "optimizer_params": {},
             "serialized_job": serialized_job
         }
     }
@@ -61,7 +61,7 @@ def test_communication_manager_fails_if_not_configured(new_session_event):
     communication_manager = CommunicationManager()
     try:
         communication_manager.inform(
-            MessageEventTypes.NEW_SESSION.name,
+            RawEventTypes.NEW_MESSAGE.name,
             new_session_event
         )
         raise Exception("This should have raised an exception")
@@ -78,12 +78,12 @@ def test_communication_manager_creates_new_sessions(new_session_event, config_ma
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager, ipfs_client)
     communication_manager.inform(
-        MessageEventTypes.NEW_SESSION.name,
+            RawEventTypes.NEW_MESSAGE.name,
         new_session_event
     )
     assert communication_manager.optimizer
 
-def test_communication_manager_can_inform_new_job_to_the_optimizer(config_manager, ipfs_client):
+def test_communication_manager_can_inform_new_job_to_the_optimizer(config_manager, ipfs_client, new_session_event):
     """
     Ensures that Communication Manager can tell the optimizer of something,
     and that the job will transfer correctly.
@@ -92,20 +92,9 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer(config_manage
     scheduler = DMLScheduler(config_manager)
     communication_manager.configure(scheduler)
     scheduler.configure(communication_manager, ipfs_client)
-    true_job = make_initialize_job(make_model_json())
-    true_job.hyperparams['epochs'] = 10
-    true_job.hyperparams['batch_size'] = 128
-    true_job.hyperparams['split'] = .05
-    serialized_job = serialize_job(true_job)                
-    new_session_event = {
-        TxEnum.KEY.name: None,
-        TxEnum.CONTENT.name: {
-            "optimizer_params": {},
-            "serialized_job": serialized_job
-        }
-    }
+    true_job = deserialize_job(new_session_event[TxEnum.CONTENT.name]['serialized_job'])
     communication_manager.inform(
-        MessageEventTypes.NEW_SESSION.name,
+            RawEventTypes.NEW_MESSAGE.name,
         new_session_event
     )
     optimizer_job = communication_manager.optimizer.job

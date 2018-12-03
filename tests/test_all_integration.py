@@ -52,11 +52,11 @@ def cleanup(transformed_filepath):
 def new_session_event(mnist_filepath):
     serialized_job = make_serialized_job(mnist_filepath)
     new_session_event = {
-        TxEnum.KEY.name: None,
-        TxEnum.CONTENT.name: {
+        # TxEnum.KEY.name: None,
+        # TxEnum.CONTENT.name: {
             "optimizer_params": {"num_averages_per_round": 2, "max_rounds": 2},
             "serialized_job": serialized_job
-        }
+        # }
     }
     return new_session_event
 
@@ -235,9 +235,13 @@ def test_communication_manager_integration(mnist_filepath, new_session_event, co
     NOTE: Timeout errors can be as a result of Runners repeatedly erroring. Check logs for this.
     """
     communication_manager, blockchain_gateway, scheduler = setup_client(config_manager, ipfs_client)
+    args = {
+        TxEnum.KEY.name: MessageEventTypes.NEW_SESSION.name,
+        TxEnum.CONTENT.name: new_session_event
+    }
     communication_manager.inform(
-        MessageEventTypes.NEW_SESSION.name,
-        new_session_event
+        RawEventTypes.NEW_MESSAGE.name,
+        args
     )
 
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_INIT.name or \

@@ -8,12 +8,13 @@ import shutil
 from tests.testing_utils import make_initialize_job, make_train_job
 from tests.testing_utils import make_serialized_job, make_model_json
 from tests.testing_utils import make_hyperparams, make_split_job
-from core.utils.enums import JobTypes, RawEventTypes, ActionableEventTypes
+from core.utils.enums import JobTypes, RawEventTypes, ActionableEventTypes, MessageEventTypes
 from core.fed_avg_optimizer import FederatedAveragingOptimizer
 from core.runner import DMLRunner
 from core.configuration import ConfigurationManager
 from data.iterators import count_datapoints
-
+from core.utils.dmljob import serialize_job
+from core.blockchain.blockchain_utils import TxEnum
 
 session_filepaths = set()
 
@@ -131,3 +132,12 @@ def test_optimizer_schedules_communication_after_training(initialization_payload
     assert event_type == ActionableEventTypes.SCHEDULE_JOBS.name
     for job in job_arr:
         assert job.job_type == JobTypes.JOB_COMM.name
+
+# def test_optimizer_waits_to_average_until_trained(initialization_payload, train_dmlresult_obj):
+#     optimizer = FederatedAveragingOptimizer(initialization_payload)
+#     args = {
+#         TxEnum.KEY.name: MessageEventTypes.NEW_WEIGHTS.name,
+#         TxEnum.CONTENT.name: serialize_job(train_dmlresult_obj.job)
+#     }
+#     nothing, nothing_ = optimizer.ask(RawEventTypes.NEW_MESSAGE.name, args)
+#     assert False

@@ -35,7 +35,7 @@ class CommunicationManager(object):
         # NOTE: This should be updated when Gateway PR is merged and we make
         # the Communication Manager error-handle out of order/missed messages.
         self.EVENT_TYPE_2_CALLBACK = {
-            MessageEventTypes.NEW_SESSION.name: self._create_session,
+            RawEventTypes.NEW_MESSAGE.name: self._create_session,
             ActionableEventTypes.SCHEDULE_JOBS.name: self._schedule_jobs,
             ActionableEventTypes.TERMINATE.name: self._terminate_session,
             ActionableEventTypes.NOTHING.name: self._do_nothing,
@@ -90,8 +90,10 @@ class CommunicationManager(object):
         # NOTE: We removed the 'optimizer_type' argument since for the MVP we're
         # only considering the 'FederatedAveragingOptimizer' for now.
         # TODO: We need to incorporate session id's when we're ready.
-        logging.info("New optimizer session is being set up...")
+        assert payload.get(TxEnum.KEY.name) is MessageEventTypes.NEW_SESSION.name, \
+            "Expected a new session but got {}".format(payload.get(TxEnum.KEY.name))
         initialization_payload = payload.get(TxEnum.CONTENT.name)
+        logging.info("New optimizer session is being set up...{}".format(initialization_payload))
         self.optimizer = FederatedAveragingOptimizer(initialization_payload)
         logging.info("Optimizer session is set! Now doing kickoff...")
         event_type, payload = self.optimizer.kickoff()

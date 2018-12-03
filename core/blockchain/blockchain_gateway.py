@@ -120,7 +120,9 @@ class BlockchainGateway(object):
             assert TxEnum.KEY.name in tx
             key = tx.get(TxEnum.KEY.name)
             value = tx.get(TxEnum.CONTENT.name)
-            self.communication_manager.inform(MessageEventTypes.NEW_SESSION.name, ipfs_to_content(self._client, value))
+            args = {TxEnum.KEY.name: MessageEventTypes.NEW_SESSION.name,
+                TxEnum.CONTENT.name: ipfs_to_content(self._client, value)}
+            self.communication_manager.inform(RawEventTypes.NEW_MESSAGE.name, args)
         list(map(handler, txs))
         return self._handle_new_session_info, self._filter_new_session_info
     
