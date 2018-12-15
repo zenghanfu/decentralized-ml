@@ -9,7 +9,7 @@ from core.runner                        import DMLRunner
 from core.scheduler                     import DMLScheduler
 from core.configuration                 import ConfigurationManager
 from tests.testing_utils                import make_initialize_job, make_model_json
-from tests.testing_utils                import make_serialized_job, serialize_job
+from tests.testing_utils                import make_serialized_job_with_uuid, serialize_job
 from core.utils.enums                   import RawEventTypes, JobTypes, MessageEventTypes
 from core.utils.keras                   import serialize_weights
 from core.blockchain.blockchain_utils   import TxEnum
@@ -36,10 +36,13 @@ def ipfs_client(config_manager):
     return ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
                             config.getint('BLOCKCHAIN', 'ipfs_port'))
 
+@pytest.fixture(scope='session')
+def mnist_uuid():
+    return 'd16c6e86-d103-4e71-8741-ee1f888d206c'
 
 @pytest.fixture(scope='session')
-def new_session_event(mnist_filepath):
-    serialized_job = make_serialized_job(mnist_filepath)
+def new_session_event(mnist_uuid):
+    serialized_job = make_serialized_job_with_uuid(mnist_filepath)
     new_session_event = {
         TxEnum.KEY.name: None,
         TxEnum.CONTENT.name: {
@@ -48,10 +51,6 @@ def new_session_event(mnist_filepath):
         }
     }
     return new_session_event
-
-@pytest.fixture(scope='session')
-def mnist_filepath():
-    return 'tests/artifacts/communication_manager/mnist'
 
 def test_communication_manager_can_be_initialized():
     """

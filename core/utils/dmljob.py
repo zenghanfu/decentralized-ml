@@ -90,6 +90,7 @@ def serialize_job(dmljob_obj):
         'framework_type': dmljob_obj.framework_type,
         'hyperparams': dmljob_obj.hyperparams,
         'label_column_name': dmljob_obj.label_column_name,
+        'uuid': dmljob_obj.uuid,
         'raw_filepath': dmljob_obj.raw_filepath,
         'session_filepath': dmljob_obj.session_filepath,
         'datapoint_count': dmljob_obj.datapoint_count,
@@ -125,6 +126,7 @@ def deserialize_job(serialized_job):
         weights,
         rest['hyperparams'],
         rest['label_column_name'],
+        rest['uuid'],
         rest['raw_filepath'],
         rest['session_filepath'],
         rest['datapoint_count']

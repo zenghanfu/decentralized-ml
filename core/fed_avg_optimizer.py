@@ -56,7 +56,8 @@ class FederatedAveragingOptimizer(object):
 		logging.info("Setting up Optimizer")
 		serialized_job = initialization_payload.get('serialized_job')
 		self.job = deserialize_job(serialized_job)
-		self.job.raw_filepath = dataset_manager.get_mappings()[self.job.uuid]
+		mappings = dataset_manager.get_mappings()
+		self.job.raw_filepath = mappings[self.job.uuid]
 		optimizer_params = initialization_payload.get('optimizer_params')
 
 		self.curr_averages_this_round = 0
