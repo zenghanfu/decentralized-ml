@@ -66,22 +66,25 @@ def cleanup(transformed_filepath, transformed_filepath_2):
         shutil.rmtree(transformed_filepath_2)
 
 @pytest.fixture(scope='session')
-def init_dmlresult_obj(config_manager, small_uuid):
+def init_dmlresult_obj(config_manager, small_uuid, dataset_manager):
     runner = DMLRunner(config_manager)
+    small_filepath = dataset_manager.get_mappings()[small_uuid]
     initialize_job = make_initialize_job(make_model_json(), small_filepath)
     result = runner.run_job(initialize_job)
     return result
 
 @pytest.fixture(scope='session')
-def split_dmlresult_obj(config_manager, mnist_uuid):
+def split_dmlresult_obj(config_manager, mnist_uuid, dataset_manager):
     model_json = make_model_json()
     runner = DMLRunner(config_manager)
+    mnist_filepath = dataset_manager.get_mappings()[mnist_uuid]
     split_job = make_split_job(
                             model_json, 
-                            mnist_uuid,
+                            mnist_filepath,
                         )
     split_job.hyperparams['split'] = 0.75
     job_results = runner.run_job(split_job)
+    print(job_results)
     return job_results
 
 @pytest.fixture(scope='session')
@@ -127,6 +130,7 @@ def test_optimizer_schedules_training_after_initialization(initialization_payloa
                     initialization_payload, 
                     dataset_manager
                 )
+    print(optimizer.job.raw_filepath)
     initial_weights = init_dmlresult_obj.results['weights']
     init_dmlresult_obj.job = init_dmlresult_obj.job.copy_constructor()
     split_dmlresult_obj.job = split_dmlresult_obj.job.copy_constructor()

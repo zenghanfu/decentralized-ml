@@ -42,7 +42,7 @@ def mnist_uuid():
 
 @pytest.fixture(scope='session')
 def new_session_event(mnist_uuid):
-    serialized_job = make_serialized_job_with_uuid(mnist_filepath)
+    serialized_job = make_serialized_job_with_uuid(mnist_uuid)
     new_session_event = {
         TxEnum.KEY.name: None,
         TxEnum.CONTENT.name: {
