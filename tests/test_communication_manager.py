@@ -38,7 +38,7 @@ def ipfs_client(config_manager):
 
 @pytest.fixture(scope='session')
 def mnist_uuid():
-    return 'd16c6e86-d103-4e71-8741-ee1f888d206c'
+    return '09c2afb9-c19b-44e2-ac7e-77a98b3641f5'
 
 @pytest.fixture(scope='session')
 def new_session_event(mnist_uuid):
