@@ -57,6 +57,8 @@ class FederatedAveragingOptimizer(object):
 		serialized_job = initialization_payload.get('serialized_job')
 		self.job = deserialize_job(serialized_job)
 		mappings = dataset_manager.get_mappings()
+		assert self.job.uuid, "uuid of job not set!"
+		assert self.job.uuid in mappings, "uuid not found in mappings"
 		self.job.raw_filepath = mappings[self.job.uuid]
 		optimizer_params = initialization_payload.get('optimizer_params')
 
