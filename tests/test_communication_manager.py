@@ -38,7 +38,7 @@ def ipfs_client(config_manager):
 
 @pytest.fixture(scope='session')
 def mnist_uuid():
-    return '09c2afb9-c19b-44e2-ac7e-77a98b3641f5'
+    return 'd16c6e86-d103-4e71-8741-ee1f888d206c'
 
 @pytest.fixture(scope='session')
 def new_session_event(mnist_uuid):
@@ -89,7 +89,7 @@ def test_communication_manager_creates_new_sessions(dataset_manager, new_session
     )
     assert communication_manager.optimizer
 
-def test_communication_manager_can_inform_new_job_to_the_optimizer(dataset_manager, config_manager, ipfs_client):
+def test_communication_manager_can_inform_new_job_to_the_optimizer(dataset_manager, config_manager, ipfs_client, mnist_uuid):
     """
     Ensures that Communication Manager can tell the optimizer of something,
     and that the job will transfer correctly.
@@ -102,6 +102,7 @@ def test_communication_manager_can_inform_new_job_to_the_optimizer(dataset_manag
     true_job.hyperparams['epochs'] = 10
     true_job.hyperparams['batch_size'] = 128
     true_job.hyperparams['split'] = .05
+    true_job.uuid = mnist_uuid
     serialized_job = serialize_job(true_job)                
     new_session_event = {
         TxEnum.KEY.name: None,
